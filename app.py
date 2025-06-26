@@ -19,9 +19,10 @@ except Exception as e:
     html_content = f"<html><body><h1>Hata: {e}</h1></body></html>"
 
 # HTML içeriğini Streamlit'te göster
-# height=None, içeriğin yüksekliğine göre otomatik ayarlanmasını sağlar.
-# width="100%" parametresi kaldırıldı, Streamlit varsayılan olarak tam genişliği kullanır.
-components.html(html_content, height=None, scrolling=True)
+# height parametresi belirli bir minimum değere ayarlandı (örn. 800 piksel),
+# bu sayede içeriğin başlangıçta kırpılması önlenir.
+# scrolling=True, içeriğin bu yüksekliği aşması durumunda kaydırma çubuklarını etkinleştirir.
+components.html(html_content, height=800, scrolling=True) # height değeri düzeltildi
 
 # Streamlit uygulamanızın altında hata ayıklama veya bilgi mesajları gösterebilirsiniz
 # st.sidebar.header("Uygulama Bilgisi")
