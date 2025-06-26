@@ -13,18 +13,31 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# Custom CSS to Remove Padding and Make it Full Screen
+# Tam Ekran, Çerçevesiz ve Mobil Uyumlu Bileşen için Özel CSS
 # -----------------------------------------------------------------------------
-# Bu CSS kodu, Streamlit'in ana konteynerindeki varsayılan kenar boşluklarını
-# (padding) kaldırarak HTML içeriğinin tüm ekranı kaplamasını sağlar.
-# Bu sayede "çerçeve" görünümü ortadan kalkar.
+# Bu CSS kodu, Streamlit'in varsayılan kenar boşluklarını kaldırır ve iframe'in
+# tüm ekranı kaplamasını sağlayarak mobil kaydırma sorunlarını çözer.
 st.markdown("""
     <style>
+        /* Ana sayfanın kaydırma çubuğunu gizle */
+        body {
+            overflow: hidden; 
+        }
+        
+        /* Streamlit tarafından eklenen tüm kenar boşluklarını kaldır */
         .block-container {
-            padding-top: 0rem !important;
-            padding-bottom: 0rem !important;
-            padding-left: 0rem !important;
-            padding-right: 0rem !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* Bileşenin bulunduğu iframe'in tüm ekranı kaplamasını sağla */
+        iframe {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            border: none;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -45,9 +58,9 @@ try:
         html_code = f.read()
 
     # HTML içeriğini Streamlit bileşeni olarak göster.
-    # `height` parametresi, içeriğin dikeyde ne kadar yer kaplayacağını belirler.
-    # `scrolling=True`, içerik sığmazsa kaydırma çubuğu eklenmesini sağlar.
-    components.html(html_code, height=1200, scrolling=True)
+    # `height` parametresi kaldırıldı, çünkü boyutlandırma artık CSS ile kontrol ediliyor.
+    # `scrolling=True`, HTML içeriğinin kendi içinde kaydırılmasına izin verir.
+    components.html(html_code, scrolling=True)
 
 except FileNotFoundError:
     # `index.html` dosyası bulunamazsa kullanıcıya bilgilendirici bir hata mesajı gösterilir.
