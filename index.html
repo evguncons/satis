@@ -227,19 +227,20 @@
         /* Modal Stilleri */
         .modal {
             display: none;
-            position: fixed;
-            z-index: 1000; /* En üstte */
-            left: 0;
-            top: 0;
+            position: fixed; /* Ekranın sabit ortasında durmasını sağlar */
+            z-index: 1000; 
+            left: 50%; /* Yatayda ortala */
+            top: 50%; /* Dikeyde ortala */
+            transform: translate(-50%, -50%); /* Kendi boyutunun yarısı kadar geri çekerek tam ortala */
             width: 100%;
             height: 100%;
-            overflow: auto;
+            overflow: auto; /* İçerik taşarsa kaydırma */
             background-color: rgba(0,0,0,0.6);
             justify-content: center;
             align-items: center;
             padding: 20px;
             box-sizing: border-box;
-            backdrop-filter: blur(5px); /* Arka planı bulanıklaştır */
+            backdrop-filter: blur(5px); 
         }
         .modal-content {
             background: linear-gradient(145deg, #8a2be2 0%, #4b0082 100%); /* Modal için mor gradyan */
@@ -249,13 +250,13 @@
             width: 90%;
             max-width: 550px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            position: relative;
+            position: relative; /* Kapatma butonu için */
             text-align: left;
             animation: fadeIn 0.3s ease-out;
         }
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(-20px) scale(0.9); } /* Animasyon düzeltildi */
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .close-button {
             color: #e0e0e0;
