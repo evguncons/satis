@@ -1,734 +1,259 @@
 import streamlit as st
+import pandas as pd
+import requests
+from datetime import datetime
 
-# Streamlit sayfa yapılandırmasını ayarla
-# layout="wide" ile bileşenin sayfanın tamamını kullanmasını sağlıyoruz.
+# --------------------------------------------------------------------------------
+# Sayfa Yapılandırması ve Stil
+# --------------------------------------------------------------------------------
 st.set_page_config(layout="wide", page_title="Satış Liderlik Tablosu")
 
-# sales-leaderboard-preview-final artifact'ından alınan tam HTML, CSS ve JS kodu
-# Bu kod, Streamlit bileşeni içinde çalışacak şekilde bir string içerisine yerleştirilmiştir.
-html_code = """
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Satış Liderlik Tablosu</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js CDN (Veri Görselleştirmesi için) -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Font Awesome (Profil İkonları için) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        /* HTML body etiketine uygulanan stiller Streamlit'in kendi body'sini etkilemez. */
-        /* Bu yüzden konteynerlerimize stil uygulamaya odaklanıyoruz.                 */
-        /* Ancak, Streamlit tarafından oluşturulan iframe'in body'si bu stilleri alır. */
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #6a0dad 0%, #00008b 100%); /* Koyu mor/mavi gradyan */
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: #ffffff; /* Genel metin rengi açık */
-        }
-        .main-content-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            max-width: 800px;
-            margin-top: 20px;
-            background-color: rgba(0, 0, 0, 0.2); /* Hafif şeffaf arka plan */
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
-        }
-        .leaderboard-container {
-            background-color: rgba(0, 0, 0, 0.4); /* Daha koyu şeffaf */
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            width: 100%;
-            text-align: center;
-            color: #ffffff; /* Beyaz metin */
-        }
-        .leaderboard-title {
-            color: #ffffff;
-            margin-bottom: 15px; /* Azaltıldı */
-            font-size: 2.5rem; /* text-5xl */
-            font-weight: 800; /* Extra bold */
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-        .leaderboard-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0 8px; /* Boşluk azaltıldı */
-            margin-top: 20px;
-        }
-        .leaderboard-table th, .leaderboard-table td {
-            padding: 12px; /* Azaltıldı */
-            text-align: left;
-            border-radius: 8px;
-            color: #ffffff;
-            background-color: rgba(255, 255, 255, 0.1); /* Hafif şeffaf beyaz */
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        .leaderboard-table th {
-            background-color: rgba(255, 255, 255, 0.2);
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-        }
-        .leaderboard-table tbody tr {
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.2s;
-            cursor: pointer;
-        }
-        .leaderboard-table tbody tr:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            background-color: rgba(255, 255, 255, 0.15);
-        }
-        .leaderboard-table tbody tr:nth-child(odd) {
-            background-color: rgba(255, 255, 255, 0.08); /* Alternatif satır rengi */
-        }
-        .leaderboard-table td:first-child {
-            font-weight: 700;
-            text-align: center; /* Sıra numarası ortalandı */
-            width: 50px; /* Sabit genişlik */
-        }
-        .leaderboard-date {
-            font-size: 1rem;
-            color: #e0e0e0;
-        }
-        /* Logo Stilleri */
-        .logo-container {
-            margin-bottom: 30px; /* Logo ile başlık arası boşluk */
-            width: 100%; 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .logo-img {
-            max-width: 280px; /* Logo boyutu büyütüldü */
-            height: auto;
-            border-radius: 0; 
-            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.3)); /* Hafif gölge */
-        }
-        /* Kral tacı stili */
-        .crown-icon {
-            width: 32px; /* Tacın boyutu büyütüldü */
-            height: 32px;
-            margin-left: 10px;
-            vertical-align: middle;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-        }
-
-        /* Top 3 Bölümü */
-        .top-3-section {
-            display: flex;
-            justify-content: space-around;
-            align-items: flex-end; /* En üstteki daha yukarıda başlasın */
-            gap: 20px;
-            margin-bottom: 40px; /* Tablo ile arası */
-            width: 100%;
-        }
-        .top-player-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: rgba(255, 255, 255, 0.15);
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-            width: 30%; /* Her kart için eşit genişlik */
-            min-width: 120px;
-            position: relative;
-            transform: translateY(0);
-            transition: transform 0.3s ease-in-out;
-            cursor: pointer;
-        }
-        .top-player-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
-        }
-        .top-player-card.rank-1 {
-            background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%); /* Altın gradyan */
-            color: #333;
-            transform: translateY(-20px); /* Daha yukarıda başla */
-            box-shadow: 0 15px 35px rgba(255, 215, 0, 0.4);
-            z-index: 10;
-        }
-        .top-player-card.rank-1 .crown-icon-top {
-            position: absolute;
-            top: -30px; /* İkonu yukarı taşı */
-            left: 50%;
-            transform: translateX(-50%);
-            width: 60px; /* Büyük taç */
-            height: 60px;
-            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.4));
-        }
-        .top-player-card.rank-2 {
-            background: linear-gradient(135deg, #c0c0c0 0%, #808080 100%); /* Gümüş gradyan */
-            color: #333;
-            transform: translateY(-10px); /* Biraz yukarıda başla */
-        }
-        .top-player-card.rank-3 {
-            background: linear-gradient(135deg, #cd7f32 0%, #a0522d 100%); /* Bronz gradyan */
-            color: #333;
-        }
-        .top-player-card .profile-icon {
-            font-size: 3.5rem; /* Büyük ikon */
-            margin-bottom: 10px;
-            color: rgba(255, 255, 255, 0.7); /* Şeffaf beyaz */
-            border: 3px solid rgba(255, 255, 255, 0.5);
-            border-radius: 50%;
-            padding: 10px;
-            background-color: rgba(0, 0, 0, 0.3);
-        }
-        .top-player-card.rank-1 .profile-icon,
-        .top-player-card.rank-2 .profile-icon,
-        .top-player-card.rank-3 .profile-icon {
-            color: #ffffff; /* Sıralama ikonları için beyaz */
-            border-color: rgba(0,0,0,0.3); /* Siyah kenarlık */
-            background-color: rgba(0,0,0,0.2);
-        }
-        .top-player-card .player-name {
-            font-weight: 700;
-            font-size: 1.1rem;
-            margin-bottom: 5px;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-        }
-        .top-player-card .player-score {
-            font-weight: 800;
-            font-size: 1.3rem;
-            color: #fff; /* Skoru vurgulamak için */
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-        }
-        /* Top 3 rank numaraları */
-        .rank-number-top {
-            position: absolute;
-            top: 5px;
-            left: 10px;
-            font-size: 1.2rem;
-            font-weight: 900;
-            color: rgba(255,255,255,0.6);
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-        }
-        .top-player-card.rank-1 .player-name,
-        .top-player-card.rank-1 .player-score,
-        .top-player-card.rank-1 .rank-number-top {
-            color: #333; /* Altın kart içindeki yazılar koyu */
-        }
-        .top-player-card.rank-2 .player-name,
-        .top-player-card.rank-2 .player-score,
-        .top-player-card.rank-2 .rank-number-top {
-            color: #333; /* Gümüş kart içindeki yazılar koyu */
-        }
-        .top-player-card.rank-3 .player-name,
-        .top-player-card.rank-3 .player-score,
-        .top-player-card.rank-3 .rank-number-top {
-            color: #333; /* Bronz kart içindeki yazılar koyu */
-        }
-
-
-        /* Modal Stilleri */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000; /* En üstte */
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.6);
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            box-sizing: border-box;
-            backdrop-filter: blur(5px); /* Arka planı bulanıklaştır */
-        }
-        .modal-content {
-            background: linear-gradient(145deg, #8a2be2 0%, #4b0082 100%); /* Modal için mor gradyan */
-            color: #ffffff;
-            padding: 30px;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 550px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            position: relative;
-            text-align: left;
-            animation: fadeIn 0.3s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .close-button {
-            color: #e0e0e0;
-            float: right;
-            font-size: 32px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-        .close-button:hover,
-        .close-button:focus {
-            color: #ffffff;
-        }
-        .modal-title {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 20px;
-            color: #fff;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-        }
-        .modal-detail-item {
-            margin-bottom: 12px;
-            font-size: 1.1rem;
-            color: #e0e0e0;
-        }
-        .modal-detail-item strong {
-            color: #ffffff;
-            font-weight: 600;
-        }
-
-        /* Grafik Konteyneri */
-        .chart-container {
-            width: 100%;
-            max-width: 700px;
-            margin-top: 40px;
-            padding: 20px;
-            background-color: rgba(0, 0, 0, 0.4); /* Grafik arka planı */
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            color: #ffffff; /* Grafik içindeki yazılar için */
-        }
-        /* Chart.js tooltips renkleri için custom CSS */
-        .chartjs-tooltip {
-            background-color: rgba(59, 130, 246, 0.9) !important; /* Mavi tonu */
-            color: #fff !important;
-            border-radius: 8px !important;
-            padding: 10px !important;
-            opacity: 1 !important;
-        }
-        .chartjs-tooltip-header {
-            padding-bottom: 5px !important;
-            margin-bottom: 5px !important;
-            border-bottom: 1px solid rgba(255,255,255,0.2) !important;
-            font-weight: bold;
-        }
-        .chartjs-tooltip-body {
-            font-size: 14px !important;
-        }
-
-        /* Responsive Ayarlar */
-        @media (max-width: 640px) {
+# Streamlit arayüzünü özelleştirmek için CSS kodları
+# Bu, gradyan arka planı ve özel kart stillerini uygulamamızı sağlar.
+def local_css():
+    st.markdown("""
+        <style>
+            /* Streamlit'in ana bloğunun arka planını özelleştir */
+            .main .block-container {
+                padding-top: 2rem;
+                padding-bottom: 2rem;
+            }
+            /* Sayfanın kendisine gradyan arka planı uygula */
             body {
-                padding: 10px;
+                background: linear-gradient(135deg, #6a0dad 0%, #00008b 100%);
+                background-attachment: fixed;
+                color: white; /* Varsayılan metin rengi */
             }
-            .main-content-wrapper {
-                margin-top: 0;
-                padding: 10px;
+            /* Streamlit bileşenlerinin renklerini daha okunabilir yap */
+            h1, h2, h3, p, .stDataFrame, .stSelectbox, .stButton {
+                color: white !important;
             }
-            .logo-container {
+            .stDataFrame {
+                color: #333; /* DataFrame içeriği için koyu renk */
+            }
+            
+            /* Başlık stili */
+            h1 {
+                text-align: center;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            }
+
+            /* Top 3 Kart Stilleri */
+            [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] {
+                border-radius: 15px;
+                padding: 20px;
+                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+                text-align: center;
+                transition: transform 0.3s ease-in-out;
+                position: relative;
+                color: #333;
+                border: none;
+            }
+            [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"]:hover {
+                transform: translateY(-5px);
+            }
+
+            /* Özel sınıflar için CSS */
+            .rank-1-card {
+                background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%); /* Altın */
+                transform: translateY(-20px);
+                z-index: 10;
+            }
+            .rank-2-card {
+                background: linear-gradient(135deg, #c0c0c0 0%, #808080 100%); /* Gümüş */
+                 transform: translateY(-10px);
+            }
+            .rank-3-card {
+                background: linear-gradient(135deg, #cd7f32 0%, #a0522d 100%); /* Bronz */
+            }
+            .card-name {
+                font-weight: 700;
+                font-size: 1.2rem;
+                margin-bottom: 5px;
+            }
+            .card-score {
+                font-weight: 800;
+                font-size: 1.4rem;
+            }
+             .card-rank-badge {
+                position: absolute;
+                top: 10px;
+                left: 15px;
+                font-size: 1.2rem;
+                font-weight: 900;
+                color: rgba(0,0,0,0.4);
+            }
+            .crown-icon {
+                font-size: 3rem;
                 margin-bottom: 10px;
+                color: rgba(255, 255, 255, 0.9);
             }
-            .logo-img {
-                max-width: 150px;
-            }
-            .leaderboard-title {
-                font-size: 2rem;
-                margin-bottom: 10px;
-            }
-            .top-3-section {
-                flex-direction: column;
-                align-items: center;
-                gap: 15px;
-                margin-bottom: 30px;
-            }
-            .top-player-card {
-                width: 80%; /* Mobil cihazlarda daha geniş kartlar */
-                transform: translateY(0) !important; /* Mobil görünümde yukarı kaydırma olmasın */
-                padding: 15px;
-            }
-            .top-player-card.rank-1 .crown-icon-top {
-                top: -20px; /* Konumu ayarla */
-                width: 45px;
-                height: 45px;
-            }
-            .top-player-card .profile-icon {
-                font-size: 2.8rem;
-                margin-bottom: 8px;
-            }
-            .leaderboard-table th, .leaderboard-table td {
-                padding: 8px;
-                font-size: 0.8rem;
-            }
-            .rank-number-top {
-                font-size: 1rem;
-            }
-            .filter-controls {
-                flex-direction: column;
-                gap: 10px;
-            }
-            .filter-controls select,
-            .filter-controls button {
+            .stButton>button {
                 width: 100%;
+                margin-top: 15px;
+                border: 2px solid rgba(0,0,0,0.3);
+                background-color: rgba(255,255,255,0.2);
+                color: white;
             }
-            .modal-content {
-                padding: 15px;
-                max-width: 95%;
+            .stButton>button:hover {
+                 background-color: rgba(255,255,255,0.4);
+                 color: black;
+                 border-color: black;
             }
-            .modal-title {
-                font-size: 1.5rem;
-            }
-            .modal-detail-item {
-                font-size: 0.9rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="main-content-wrapper">
-        <!-- Logo Ekleme Alanı -->
-        <div class="logo-container">
-            <img id="logo" src="https://static.ticimax.cloud/32769/uploads/editoruploads/hedef-image/logo.png" 
-                 onerror="this.onerror=null;this.src='https://placehold.co/250x80/EEEEEE/333333?text=Logo+Yuklenemedi';" 
-                 alt="Şirket Logosu" class="logo-img">
-        </div>
+        </style>
+        <!-- Font Awesome ikonları için link -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    """, unsafe_allow_html=True)
+
+# --------------------------------------------------------------------------------
+# Veri Çekme Fonksiyonu
+# --------------------------------------------------------------------------------
+
+# Google Apps Script'ten verileri çeker ve önbelleğe alır.
+# ttl=1200 saniye (20 dakika) sonra önbellek temizlenir ve veri yeniden çekilir.
+@st.cache_data(ttl=1200)
+def fetch_leaderboard_data(month, year):
+    """
+    Belirtilen ay ve yıl için Google Apps Script'ten liderlik tablosu verilerini çeker.
+    """
+    # KENDİ GOOGLE APPS SCRIPT WEB UYGULAMANIZIN URL'SİNİ BURAYA YAPIŞTIRIN
+    url = f"https://script.google.com/macros/s/AKfycbwHjG2pWCFT3nZm2jfl1shZ5E6VV0wwoWiogJN-UH73iLDJ8iHpkQgM5jDR275anBnuEA/exec?month={month}&year={year}"
+    try:
+        response = requests.get(url, timeout=15)
+        response.raise_for_status()  # HTTP hatalarını kontrol et
+        data = response.json()
+        if not isinstance(data, list):
+            return pd.DataFrame(), "Hata: Veri formatı beklenildiği gibi değil."
         
-        <div class="leaderboard-container">
-            <h1 class="leaderboard-title">LİDERLİK TABLOSU</h1>
+        # Verileri DataFrame'e dönüştür ve sırala
+        df = pd.DataFrame(data)
+        if 'totalCiro' in df.columns:
+            df = df.sort_values(by="totalCiro", ascending=False).reset_index(drop=True)
+            return df, None
+        else:
+            return pd.DataFrame(), "Hata: Veride 'totalCiro' sütunu bulunamadı."
             
-            <!-- Tarih Filtresi / Dönem Seçici -->
-            <div class="filter-controls flex justify-center items-center gap-4 mb-6">
-                <select id="monthSelect" class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800">
-                    <!-- Aylar JavaScript ile doldurulacak -->
-                </select>
-                <select id="yearSelect" class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800">
-                    <!-- Yıllar JavaScript ile doldurulacak -->
-                </select>
-                <button id="applyFilter" class="bg-purple-700 hover:bg-purple-800 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50">
-                    Filtrele
-                </button>
-            </div>
+    except requests.exceptions.RequestException as e:
+        return pd.DataFrame(), f"Ağ Hatası: Veriler çekilemedi. {e}"
+    except ValueError:
+        return pd.DataFrame(), "JSON Hatası: Sunucudan gelen yanıt ayrıştırılamadı."
 
-            <p class="leaderboard-date mb-10" id="currentPeriodDisplay"></p>
+# --------------------------------------------------------------------------------
+# Yardımcı Fonksiyonlar ve Ana Arayüz
+# --------------------------------------------------------------------------------
+
+def show_branch_details_modal(branch_data):
+    """
+    Seçilen şubenin detaylarını gösteren bir modal pencere oluşturur.
+    """
+    modal = st.modal(f"Şube Detayları: {branch_data.get('branch', 'N/A')}")
+    with modal:
+        ciro = branch_data.get('totalCiro', 0)
+        sales_count = branch_data.get('successfulSalesCount', 0)
+        call_count = branch_data.get('totalCalls', 0)
+        sale_rate = branch_data.get('saleRate', 0)
+        avg_ciro = branch_data.get('averageCiro', 0)
+
+        st.markdown(f"**Toplam Ciro:** {ciro:,.2f} TL")
+        st.markdown(f"**Başarılı Satış Sayısı:** {sales_count} Adet")
+        st.markdown(f"**Toplam Arama Sayısı:** {call_count} Adet")
+        st.markdown(f"**Başarılı Satış Oranı:** {sale_rate}%")
+        st.markdown(f"**Ortalama Satış Cirosu:** {avg_ciro:,.2f} TL")
+
+# --- ANA UYGULAMA ---
+
+local_css()
+
+# Logo ve Başlık
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    st.image(
+        "https://static.ticimax.cloud/32769/uploads/editoruploads/hedef-image/logo.png",
+        use_column_width=True
+    )
+st.title("Satış Liderlik Tablosu")
+
+# Filtreleme Kontrolleri
+month_names = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+current_year = datetime.now().year
+current_month_index = datetime.now().month - 1
+
+filter_cols = st.columns(3)
+with filter_cols[0]:
+    selected_month_name = st.selectbox("Ay Seçin", month_names, index=current_month_index)
+with filter_cols[1]:
+    selected_year = st.selectbox("Yıl Seçin", range(current_year, current_year - 5, -1))
+with filter_cols[2]:
+    st.write("") # Boşluk için
+    st.write("") # Boşluk için
+    apply_filter = st.button("Filtrele", use_container_width=True)
+
+# Seçilen ayın sayısal değerini bul
+selected_month_index = month_names.index(selected_month_name)
+
+# Verileri çek ve göster
+with st.spinner('Liderlik tablosu verileri yükleniyor...'):
+    df, error_message = fetch_leaderboard_data(selected_month_index, selected_year)
+
+if error_message:
+    st.error(error_message)
+elif df.empty:
+    st.warning("Seçili dönem için veri bulunamadı.")
+else:
+    st.success(f"**{selected_month_name} {selected_year}** dönemi verileri başarıyla yüklendi.")
+    
+    # TOP 3 ŞUBELERİ GÖSTER
+    st.header("🏆 Ayın Liderleri 🏆")
+    top_3 = df.head(3)
+    top_3_cols = st.columns(3)
+
+    rank_map = {0: 2, 1: 1, 2: 3} # 2., 1., 3. olarak sıralamak için
+    
+    # Kartları oluştururken kullanılacak sıra
+    display_order = [1, 0, 2] # 2. kart, 1. kart, 3. kart
+
+    for i, col_index in enumerate(display_order):
+        if i < len(top_3):
+            branch_data = top_3.iloc[i]
+            rank = i + 1
             
-            <!-- Top 3 Şubeler Bölümü -->
-            <div class="top-3-section">
-                <!-- Rank 2 -->
-                <div id="rank2Card" class="top-player-card rank-2">
-                    <span class="rank-number-top">2</span>
-                    <i class="fas fa-user-circle profile-icon"></i>
-                    <div class="player-name">YÜKLENİYOR...</div>
-                    <div class="player-score">0 TL</div>
-                </div>
-                <!-- Rank 1 -->
-                <div id="rank1Card" class="top-player-card rank-1">
-                    <img src="https://www.upload.ee/image/18258333/0_12e6cc_138b775d_orig.png" alt="Kral Tacı" class="crown-icon-top">
-                    <span class="rank-number-top">1</span>
-                    <i class="fas fa-user-circle profile-icon"></i>
-                    <div class="player-name">YÜKLENİYOR...</div>
-                    <div class="player-score">0 TL</div>
-                </div>
-                <!-- Rank 3 -->
-                <div id="rank3Card" class="top-player-card rank-3">
-                    <span class="rank-number-top">3</span>
-                    <i class="fas fa-user-circle profile-icon"></i>
-                    <div class="player-name">YÜKLENİYOR...</div>
-                    <div class="player-score">0 TL</div>
-                </div>
-            </div>
+            # Kart CSS sınıfını belirle
+            if rank == 1:
+                card_class = "rank-1-card"
+                icon = '<i class="fa-solid fa-crown crown-icon"></i>'
+            elif rank == 2:
+                card_class = "rank-2-card"
+                icon = '<i class="fa-solid fa-medal crown-icon"></i>'
+            else:
+                card_class = "rank-3-card"
+                icon = '<i class="fa-solid fa-award crown-icon"></i>'
 
-            <table class="leaderboard-table">
-                <thead>
-                    <tr>
-                        <th>Sıra</th>
-                        <th>Şube Adı</th>
-                        <th>Toplam Ciro</th>
-                    </tr>
-                </thead>
-                <tbody id="leaderboardBody">
-                    <!-- Buraya JavaScript ile dinamik veriler yüklenecek -->
-                </tbody>
-            </table>
-            <div id="loadingIndicator" class="mt-4 text-gray-500 hidden">Veriler yükleniyor...</div>
-            <div id="errorMessage" class="mt-4 text-red-600 hidden"></div>
-            <div id="lastUpdated" class="mt-4 text-gray-400 text-sm"></div>
-        </div>
-
-        <!-- Veri Görselleştirmeleri (Çubuk Grafik) -->
-        <div class="chart-container">
-            <canvas id="salesChart"></canvas>
-        </div>
-    </div>
-
-    <!-- Şube Detay Modal -->
-    <div id="branchDetailModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2 id="modalBranchName" class="modal-title"></h2>
-            <div id="modalDetails">
-                <p class="modal-detail-item"><strong>Toplam Ciro:</strong> <span id="modalTotalCiro"></span></p>
-                <p class="modal-detail-item"><strong>Başarılı Satış Sayısı:</strong> <span id="modalSuccessfulSales"></span></p>
-                <p class="modal-detail-item"><strong>Toplam Arama Sayısı:</strong> <span id="modalTotalCalls"></span></p>
-                <p class="modal-detail-item"><strong>Başarılı Satış Oranı:</strong> <span id="modalSaleRate"></span></p>
-                <p class="modal-detail-item"><strong>Ortalama Satış Cirosu:</strong> <span id="modalAverageCiro"></span></p>
-                <!-- Gelecekte eklenecek diğer rozetler/detaylar buraya gelebilir -->
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let refreshInterval; 
-        let myChart; 
-        let allBranchDataGlobal = []; 
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const leaderboardBody = document.getElementById('leaderboardBody');
-            const currentPeriodDisplay = document.getElementById('currentPeriodDisplay'); 
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            const errorMessage = document.getElementById('errorMessage');
-            const lastUpdatedElement = document.getElementById('lastUpdated');
-            const monthSelect = document.getElementById('monthSelect');
-            const yearSelect = document.getElementById('yearSelect');
-            const applyFilterButton = document.getElementById('applyFilter');
-
-            // Top 3 Kart Elemanları
-            const rank1Card = document.getElementById('rank1Card');
-            const rank2Card = document.getElementById('rank2Card');
-            const rank3Card = document.getElementById('rank3Card');
-            const rank1Name = rank1Card.querySelector('.player-name');
-            const rank1Score = rank1Card.querySelector('.player-score');
-            const rank2Name = rank2Card.querySelector('.player-name');
-            const rank2Score = rank2Card.querySelector('.player-score');
-            const rank3Name = rank3Card.querySelector('.player-name');
-            const rank3Score = rank3Card.querySelector('.player-score');
+            with top_3_cols[col_index]:
+                 # Kartın tüm içeriğini tek bir container'a alıp, ona özel class atıyoruz.
+                with st.container():
+                    st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
+                    st.markdown(f'<span class="card-rank-badge">{rank}</span>', unsafe_allow_html=True)
+                    st.markdown(icon, unsafe_allow_html=True)
+                    st.markdown(f"<div class='card-name'>{branch_data['branch']}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='card-score'>{branch_data['totalCiro']:,.2f} TL</div>", unsafe_allow_html=True)
+                    
+                    if st.button("Detayları Gör", key=f"details_{rank}"):
+                        show_branch_details_modal(branch_data)
+                    st.markdown('</div>', unsafe_allow_html=True)
 
 
-            // Modal elemanları
-            const branchDetailModal = document.getElementById('branchDetailModal');
-            const closeButton = document.querySelector('.close-button');
-            const modalBranchName = document.getElementById('modalBranchName');
-            const modalTotalCiro = document.getElementById('modalTotalCiro');
-            const modalSuccessfulSales = document.getElementById('modalSuccessfulSales');
-            const modalTotalCalls = document.getElementById('modalTotalCalls');
-            const modalSaleRate = document.getElementById('modalSaleRate');
-            const modalAverageCiro = document.getElementById('modalAverageCiro');
+    st.header("Genel Sıralama")
+    
+    # Grafiği göster
+    st.subheader("Şube Ciro Karşılaştırması")
+    chart_data = df[['branch', 'totalCiro']].set_index('branch')
+    st.bar_chart(chart_data, height=400)
 
-            // Ay ve Yıl Seçicilerini Doldur
-            const monthNames = [
-                'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-                'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
-            ];
-            const currentYear = new Date().getFullYear();
-            const currentMonthIndex = new Date().getMonth();
+    # Geriye kalan şubelerin tablosunu göster
+    st.subheader("Tüm Şubeler")
+    remaining_branches = df.copy()
+    remaining_branches.index = remaining_branches.index + 1 # Sıralamayı 1'den başlat
+    st.dataframe(remaining_branches[['branch', 'totalCiro']].rename(columns={'branch': 'Şube Adı', 'totalCiro': 'Toplam Ciro'}))
 
-            monthNames.forEach((name, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = name;
-                if (index === currentMonthIndex) {
-                    option.selected = true;
-                }
-                monthSelect.appendChild(option);
-            });
-
-            for (let i = currentYear; i >= currentYear - 5; i--) { 
-                const option = document.createElement('option');
-                option.value = i;
-                option.textContent = i;
-                if (i === currentYear) {
-                    option.selected = true;
-                }
-                yearSelect.appendChild(option);
-            }
-
-            // Google Apps Script Web Uygulaması URL'niz
-            // BU URL'Yİ KENDİ GOOGLE APPS SCRIPT WEB UYGULAMANIZIN URL'Sİ İLE DEĞİŞTİRDİĞİNİZDEN EMİN OLUN.
-            const GOOGLE_APPS_SCRIPT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwHjG2pWCFT3nZm2jfl1shZ5E6VV0wwoWiogJN-UH73iLDJ8iHpkQgM5jDR275anBnuEA/exec'; 
-
-            async function fetchLeaderboardData(month = currentMonthIndex, year = currentYear) {
-                if (!GOOGLE_APPS_SCRIPT_WEB_APP_URL || GOOGLE_APPS_SCRIPT_WEB_APP_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE') {
-                    errorMessage.textContent = 'Google Apps Script Web Uygulaması URL\'si tanımlanmadı veya hatalı.';
-                    errorMessage.classList.remove('hidden');
-                    return;
-                }
-
-                loadingIndicator.classList.remove('hidden');
-                errorMessage.classList.add('hidden');
-                leaderboardBody.innerHTML = ''; 
-                if (myChart) myChart.destroy(); 
-
-                const url = `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?month=${month}&year=${year}`;
-
-                try {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error(`HTTP hata kodu: ${response.status}`);
-                    const data = await response.json(); 
-                    if (!Array.isArray(data)) throw new Error('Apps Script\'ten beklenen veri bir dizi değil.');
-
-                    if (data.length === 0) {
-                        errorMessage.textContent = 'Liderlik tablosu için veri bulunamadı.';
-                        errorMessage.classList.remove('hidden');
-                        updateTop3Cards([], lastUpdatedElement); 
-                        return;
-                    }
-
-                    data.sort((a, b) => b.totalCiro - a.totalCiro); 
-                    allBranchDataGlobal = data;
-
-                    updateTop3Cards(data, lastUpdatedElement);
-
-                    leaderboardBody.innerHTML = ''; 
-                    data.slice(3).forEach((item, index) => {
-                        const row = leaderboardBody.insertRow();
-                        row.insertCell(0).textContent = index + 4; 
-                        row.insertCell(1).textContent = item.branch;
-                        row.insertCell(2).textContent = `${item.totalCiro.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}`; 
-                        row.addEventListener('click', () => showBranchDetails(item));
-                    });
-
-                    renderChart(data);
-
-                } catch (error) {
-                    console.error('Liderlik tablosu verileri çekilirken hata oluştu:', error);
-                    errorMessage.textContent = `Veriler yüklenirken bir hata oluştu: ${error.message}.`;
-                    errorMessage.classList.remove('hidden');
-                    updateTop3Cards([], lastUpdatedElement); 
-                } finally {
-                    loadingIndicator.classList.add('hidden');
-                }
-            }
-
-            function updateTop3Cards(data, lastUpdatedElem) {
-                const topBranches = data.slice(0, 3);
-                const cards = [rank1Card, rank2Card, rank3Card];
-                
-                cards.forEach(card => {
-                    card.querySelector('.player-name').textContent = 'YÜKLENİYOR...';
-                    card.querySelector('.player-score').textContent = '0 TL';
-                    card.onclick = null; // Eski olay dinleyicilerini temizle
-                });
-
-                if (topBranches[0]) {
-                    rank1Name.textContent = topBranches[0].branch;
-                    rank1Score.textContent = (topBranches[0].totalCiro || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
-                    rank1Card.addEventListener('click', () => showBranchDetails(topBranches[0]));
-                }
-                if (topBranches[1]) {
-                    rank2Name.textContent = topBranches[1].branch;
-                    rank2Score.textContent = (topBranches[1].totalCiro || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
-                    rank2Card.addEventListener('click', () => showBranchDetails(topBranches[1]));
-                }
-                if (topBranches[2]) {
-                    rank3Name.textContent = topBranches[2].branch;
-                    rank3Score.textContent = (topBranches[2].totalCiro || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
-                    rank3Card.addEventListener('click', () => showBranchDetails(topBranches[2]));
-                }
-                lastUpdatedElem.textContent = `Son Güncelleme: ${new Date().toLocaleString('tr-TR')}`;
-            }
-
-            function renderChart(data) {
-                const ctx = document.getElementById('salesChart').getContext('2d');
-                if (myChart) myChart.destroy();
-                myChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: data.map(item => item.branch),
-                        datasets: [{
-                            label: 'Toplam Ciro',
-                            data: data.map(item => item.totalCiro),
-                            backgroundColor: 'rgba(138, 43, 226, 0.7)',
-                            borderColor: 'rgba(138, 43, 226, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            title: {
-                                display: true,
-                                text: 'Şube Ciro Karşılaştırması',
-                                font: { size: 16, color: '#ffffff' },
-                                color: '#ffffff'
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: context => `${context.dataset.label || ''}: ${(context.parsed.y || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}`
-                                }
-                            }
-                        },
-                        scales: {
-                            x: { ticks: { color: '#e0e0e0' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
-                            y: {
-                                beginAtZero: true,
-                                title: { display: true, text: 'Ciro (TL)', color: '#e0e0e0' },
-                                ticks: {
-                                    color: '#e0e0e0',
-                                    callback: value => (value || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })
-                                },
-                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                            }
-                        }
-                    }
-                });
-            }
-
-            function showBranchDetails(branchData) {
-                modalBranchName.textContent = branchData.branch || 'Bilinmiyor';
-                modalTotalCiro.textContent = (branchData.totalCiro || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
-                modalSuccessfulSales.textContent = `${branchData.successfulSalesCount || 0} Adet`;
-                modalTotalCalls.textContent = `${branchData.totalCalls || 0} Adet`;
-                modalSaleRate.textContent = `${branchData.saleRate || 0}%`;
-                modalAverageCiro.textContent = (branchData.averageCiro || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
-                branchDetailModal.style.display = 'flex';
-            }
-
-            closeButton.addEventListener('click', () => { branchDetailModal.style.display = 'none'; });
-            window.addEventListener('click', (event) => {
-                if (event.target == branchDetailModal) {
-                    branchDetailModal.style.display = 'none';
-                }
-            });
-
-            applyFilterButton.addEventListener('click', () => {
-                const selectedMonth = parseInt(monthSelect.value);
-                const selectedYear = parseInt(yearSelect.value);
-                currentPeriodDisplay.textContent = `Dönem: ${monthNames[selectedMonth]} ${selectedYear}`;
-                fetchLeaderboardData(selectedMonth, selectedYear);
-            });
-
-            currentPeriodDisplay.textContent = `Dönem: ${monthNames[currentMonthIndex]} ${currentYear}`;
-            fetchLeaderboardData(); 
-
-            if (refreshInterval) clearInterval(refreshInterval); 
-            refreshInterval = setInterval(() => {
-                const selectedMonth = parseInt(monthSelect.value);
-                const selectedYear = parseInt(yearSelect.value);
-                fetchLeaderboardData(selectedMonth, selectedYear);
-            }, 1200000);
-        });
-    </script>
-</body>
-</html>
-"""
-
-# HTML bileşenini Streamlit'e ekle
-# ÖNEMLİ: 'height' parametresi, modal pencerenin doğru şekilde ortalanması için kritik öneme sahiptir.
-# Bu değer, iframe'in yeterli dikey alana sahip olmasını sağlar.
-# Grafikler ve tablo dahil tüm içeriğin rahatça sığması için 1200px iyi bir başlangıçtır.
-st.components.v1.html(html_code, height=1200, scrolling=True)
-
-# İsteğe bağlı: Streamlit arayüzüne ek notlar veya bileşenler ekleyebilirsiniz.
-st.info("Liderlik tablosu her 20 dakikada bir otomatik olarak güncellenmektedir.")
+    st.info(f"Son veri güncelleme zamanı: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
