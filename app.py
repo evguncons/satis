@@ -14,18 +14,15 @@ try:
         html_content = f.read()
 except FileNotFoundError:
     st.error(f"Hata: '{html_file_path}' dosyası bulunamadı. Lütfen 'index.html' dosyasının 'app.py' ile aynı klasörde olduğundan emin olun.")
-    html_content = "<html><body><h1>Hata: index.html bulunamadı!</h1></body></html>"
+    html_content = "<html><body><h1>Hata: index.html bulunamadı!</h1></body></body></html>"
 except Exception as e:
     st.error(f"HTML dosyasını okurken bir hata oluştu: {e}")
     html_content = f"<html><body><h1>Hata: {e}</h1></body></html>"
 
-# HTML içeriğini Streamlit'te göster
-# height parametresi daha büyük bir değere ayarlandı (örn. 1200 piksel),
-# bu sayede içeriğin kırpılması önlenir.
-# scrolling=True, içeriğin bu yüksekliği aşması durumunda kaydırma çubuklarını etkinleştirir.
-# Streamlit'in varsayılan padding'ini kaldırmak için özel CSS enjekte edebiliriz.
+# Streamlit'in varsayılan padding'ini kaldırmak ve scroll sorununu çözmek için özel CSS enjekte ediyoruz.
 st.markdown("""
     <style>
+        /* Streamlit'in ana blok konteynerindeki padding'i sıfırla */
         .block-container {
             padding-left: 0rem !important;
             padding-right: 0rem !important;
@@ -36,34 +33,40 @@ st.markdown("""
             margin-top: 0 !important;
             margin-bottom: 0 !important;
         }
+        /* Rapor görünümündeki ana konteyner için de padding'i sıfırla */
         .reportview-container .main .block-container {
             padding-top: 0rem !important;
             padding-bottom: 0rem !important;
             padding-left: 0rem !important;
             padding-right: 0rem !important;
         }
-        /* Streamlit'in ana div'leri için padding'i sıfırla */
+        /* Streamlit'in genel ana div'leri için padding'i sıfırla */
         /* Bu seçiciler Streamlit versiyonlarına göre değişebilir, ancak en yaygın olanları hedefler */
-        .css-fg4lnf, .st-emotion-cache-18ni7ap { /* Genel Streamlit konteynerleri */
+        .css-fg4lnf, .st-emotion-cache-18ni7ap { 
             padding-left: 0rem !important;
             padding-right: 0rem !important;
             padding-top: 0rem !important;
             padding-bottom: 0rem !important;
             margin: 0 !important;
         }
-        header.st-emotion-cache-c69x0g.e1t1953018, .st-emotion-cache-z5rd0y { /* Streamlit header */
+        /* Streamlit'in üst başlığını gizle */
+        header.st-emotion-cache-c69x0g.e1t1953018, .st-emotion-cache-z5rd0y { 
             display: none !important;
             height: 0px !important;
         }
-        /* html elementinin scrollbarını gizle, iframe'in kendisi scroll etsin */
-        html {
+        /* HTML içeriğinin (iframe içindeki) kaydırma çubuklarını gizleme kuralını kaldırıyorum */
+        /* Bu sayede içerik gerektiğinde kendi içinde kaydırılabilir. */
+        /* html {
             overflow: hidden !important;
-        }
+        } */ /* Bu satır kaldırıldı */
     </style>
     """, unsafe_allow_html=True)
 
-# Yüksekliği artırıldı
-components.html(html_content, height=1200, scrolling=True) 
+# HTML içeriğini Streamlit'te göster
+# height parametresi daha büyük bir değere ayarlandı (örn. 1500 piksel)
+# Bu, içeriğin başlangıçta kırpılmasını önler ve mobil kaydırma sorununu iyileştirir.
+# scrolling=True, içeriğin bu yüksekliği aşması durumunda kaydırma çubuklarını etkinleştirir.
+components.html(html_content, height=1500, scrolling=True) 
 
 # Streamlit uygulamanızın altında hata ayıklama veya bilgi mesajları gösterebilirsiniz
 # st.sidebar.header("Uygulama Bilgisi")
