@@ -13,6 +13,23 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
+# Custom CSS to Remove Padding and Make it Full Screen
+# -----------------------------------------------------------------------------
+# Bu CSS kodu, Streamlit'in ana konteynerindeki varsayılan kenar boşluklarını
+# (padding) kaldırarak HTML içeriğinin tüm ekranı kaplamasını sağlar.
+# Bu sayede "çerçeve" görünümü ortadan kalkar.
+st.markdown("""
+    <style>
+        .block-container {
+            padding-top: 0rem !important;
+            padding-bottom: 0rem !important;
+            padding-left: 0rem !important;
+            padding-right: 0rem !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
 # HTML Dosyasını Okuma ve Gösterme
 # -----------------------------------------------------------------------------
 # Bu bölüm, `app.py` ile aynı dizinde bulunan 'index.html' dosyasını bulur,
