@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import os
 
+# Sayfa düzenini geniş (wide) olarak ayarla
 st.set_page_config(layout="wide")
 
 # HTML dosyasının yolu
@@ -22,7 +23,45 @@ except Exception as e:
 # height parametresi belirli bir minimum değere ayarlandı (örn. 800 piksel),
 # bu sayede içeriğin başlangıçta kırpılması önlenir.
 # scrolling=True, içeriğin bu yüksekliği aşması durumunda kaydırma çubuklarını etkinleştirir.
-components.html(html_content, height=800, scrolling=True) # height değeri düzeltildi
+# width parametresi kaldırıldı, Streamlit geniş modda (layout="wide") içeriği otomatik olarak genişletir.
+# Ayrıca, Streamlit'in varsayılan padding'ini kaldırmak için özel CSS enjekte edebiliriz.
+st.markdown("""
+    <style>
+        .block-container {
+            padding-left: 0rem;
+            padding-right: 0rem;
+            padding-top: 0rem;
+            padding-bottom: 0rem;
+            margin-left: 0;
+            margin-right: 0;
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+        .reportview-container .main .block-container {
+            padding-top: 0rem;
+            padding-bottom: 0rem;
+            padding-left: 0rem;
+            padding-right: 0rem;
+        }
+        .css-fg4lnf { /* Streamlit'in ana div'i, versiyona göre değişebilir */
+            padding-left: 0rem !important;
+            padding-right: 0rem !important;
+        }
+        header.st-emotion-cache-c69x0g.e1t1953018 { /* Streamlit header */
+            display: none !important;
+        }
+        .st-emotion-cache-18ni7ap { /* Streamlit main block for apps (padding) */
+            padding-left: 0rem !important;
+            padding-right: 0rem !important;
+            padding-top: 0rem !important;
+        }
+        .st-emotion-cache-z5rd0y { /* Streamlit header when deployed */
+            display: none;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+components.html(html_content, height=800, scrolling=True) 
 
 # Streamlit uygulamanızın altında hata ayıklama veya bilgi mesajları gösterebilirsiniz
 # st.sidebar.header("Uygulama Bilgisi")
