@@ -19,10 +19,11 @@ except Exception as e:
     html_content = f"<html><body><h1>Hata: {e}</h1></body></html>"
 
 # HTML içeriğini Streamlit'te göster
-components.html(html_content, height=1200, scrolling=True)
+# height=None, içeriğin yüksekliğine göre otomatik ayarlanmasını sağlar.
+# width="100%" Streamlit konteynerinin tam genişliğini kullanır.
+components.html(html_content, height=None, width="100%", scrolling=True)
 
 # Streamlit uygulamanızın altında hata ayıklama veya bilgi mesajları gösterebilirsiniz
 # st.sidebar.header("Uygulama Bilgisi")
 # st.sidebar.write("Bu uygulama, Google Sheets verilerini kullanarak dinamik bir liderlik tablosu görüntüler.")
 # st.sidebar.write("Apps Script URL'inizin doğru ve erişilebilir olduğundan emin olun.")
-
