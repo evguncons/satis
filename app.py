@@ -1,259 +1,188 @@
 import streamlit as st
 import pandas as pd
 import requests
+import altair as alt
 from datetime import datetime
 
-# --------------------------------------------------------------------------------
-# Sayfa Yapılandırması ve Stil
-# --------------------------------------------------------------------------------
-st.set_page_config(layout="wide", page_title="Satış Liderlik Tablosu")
+# -----------------------------------------------------------------------------
+# Sayfa Konfigürasyonu
+# -----------------------------------------------------------------------------
+# Streamlit sayfasının temel ayarları. Sayfa başlığı, ikonu ve yerleşim düzeni belirlenir.
+st.set_page_config(
+    page_title="Satış Liderlik Tablosu",
+    page_icon="🏆",
+    layout="wide"  # Sayfanın tam genişlikte kullanılmasını sağlar.
+)
 
-# Streamlit arayüzünü özelleştirmek için CSS kodları
-# Bu, gradyan arka planı ve özel kart stillerini uygulamamızı sağlar.
-def local_css():
-    st.markdown("""
-        <style>
-            /* Streamlit'in ana bloğunun arka planını özelleştir */
-            .main .block-container {
-                padding-top: 2rem;
-                padding-bottom: 2rem;
-            }
-            /* Sayfanın kendisine gradyan arka planı uygula */
-            body {
-                background: linear-gradient(135deg, #6a0dad 0%, #00008b 100%);
-                background-attachment: fixed;
-                color: white; /* Varsayılan metin rengi */
-            }
-            /* Streamlit bileşenlerinin renklerini daha okunabilir yap */
-            h1, h2, h3, p, .stDataFrame, .stSelectbox, .stButton {
-                color: white !important;
-            }
-            .stDataFrame {
-                color: #333; /* DataFrame içeriği için koyu renk */
-            }
-            
-            /* Başlık stili */
-            h1 {
-                text-align: center;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            }
+# -----------------------------------------------------------------------------
+# Google Apps Script'ten Veri Çekme Fonksiyonu
+# -----------------------------------------------------------------------------
+# Bu fonksiyon, Google E-Tablolar'daki verileri çeken Apps Script'e bağlanır.
+# Streamlit'in @st.cache_data dekoratörü sayesinde, aynı filtrelerle tekrar
+# veri çekildiğinde sonuçlar önbellekten alınır, bu da performansı artırır.
+# Veri, 20 dakika (1200 saniye) boyunca önbellekte tutulur.
 
-            /* Top 3 Kart Stilleri */
-            [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] {
-                border-radius: 15px;
-                padding: 20px;
-                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-                text-align: center;
-                transition: transform 0.3s ease-in-out;
-                position: relative;
-                color: #333;
-                border: none;
-            }
-            [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"]:hover {
-                transform: translateY(-5px);
-            }
-
-            /* Özel sınıflar için CSS */
-            .rank-1-card {
-                background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%); /* Altın */
-                transform: translateY(-20px);
-                z-index: 10;
-            }
-            .rank-2-card {
-                background: linear-gradient(135deg, #c0c0c0 0%, #808080 100%); /* Gümüş */
-                 transform: translateY(-10px);
-            }
-            .rank-3-card {
-                background: linear-gradient(135deg, #cd7f32 0%, #a0522d 100%); /* Bronz */
-            }
-            .card-name {
-                font-weight: 700;
-                font-size: 1.2rem;
-                margin-bottom: 5px;
-            }
-            .card-score {
-                font-weight: 800;
-                font-size: 1.4rem;
-            }
-             .card-rank-badge {
-                position: absolute;
-                top: 10px;
-                left: 15px;
-                font-size: 1.2rem;
-                font-weight: 900;
-                color: rgba(0,0,0,0.4);
-            }
-            .crown-icon {
-                font-size: 3rem;
-                margin-bottom: 10px;
-                color: rgba(255, 255, 255, 0.9);
-            }
-            .stButton>button {
-                width: 100%;
-                margin-top: 15px;
-                border: 2px solid rgba(0,0,0,0.3);
-                background-color: rgba(255,255,255,0.2);
-                color: white;
-            }
-            .stButton>button:hover {
-                 background-color: rgba(255,255,255,0.4);
-                 color: black;
-                 border-color: black;
-            }
-        </style>
-        <!-- Font Awesome ikonları için link -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    """, unsafe_allow_html=True)
-
-# --------------------------------------------------------------------------------
-# Veri Çekme Fonksiyonu
-# --------------------------------------------------------------------------------
-
-# Google Apps Script'ten verileri çeker ve önbelleğe alır.
-# ttl=1200 saniye (20 dakika) sonra önbellek temizlenir ve veri yeniden çekilir.
 @st.cache_data(ttl=1200)
-def fetch_leaderboard_data(month, year):
+def fetch_data(month, year):
     """
     Belirtilen ay ve yıl için Google Apps Script'ten liderlik tablosu verilerini çeker.
     """
-    # KENDİ GOOGLE APPS SCRIPT WEB UYGULAMANIZIN URL'SİNİ BURAYA YAPIŞTIRIN
+    # Google Apps Script Web Uygulaması URL'si (HTML kodundan alındı)
     url = f"https://script.google.com/macros/s/AKfycbwHjG2pWCFT3nZm2jfl1shZ5E6VV0wwoWiogJN-UH73iLDJ8iHpkQgM5jDR275anBnuEA/exec?month={month}&year={year}"
     try:
-        response = requests.get(url, timeout=15)
-        response.raise_for_status()  # HTTP hatalarını kontrol et
-        data = response.json()
-        if not isinstance(data, list):
-            return pd.DataFrame(), "Hata: Veri formatı beklenildiği gibi değil."
+        response = requests.get(url, timeout=30)
+        # HTTP isteği başarılı değilse hata fırlat
+        response.raise_for_status()
         
-        # Verileri DataFrame'e dönüştür ve sırala
+        # Gelen JSON verisini bir Pandas DataFrame'e dönüştür
+        data = response.json()
+        if not data:
+            return pd.DataFrame() # Veri yoksa boş DataFrame döndür
+
         df = pd.DataFrame(data)
-        if 'totalCiro' in df.columns:
-            df = df.sort_values(by="totalCiro", ascending=False).reset_index(drop=True)
-            return df, None
-        else:
-            return pd.DataFrame(), "Hata: Veride 'totalCiro' sütunu bulunamadı."
-            
+        
+        # 'totalCiro' sütununa göre verileri büyükten küçüğe sırala
+        df = df.sort_values(by="totalCiro", ascending=False).reset_index(drop=True)
+        # Sıralama numarasını (rank) ekle (1'den başlayarak)
+        df['Sıra'] = df.index + 1
+        return df
+
     except requests.exceptions.RequestException as e:
-        return pd.DataFrame(), f"Ağ Hatası: Veriler çekilemedi. {e}"
-    except ValueError:
-        return pd.DataFrame(), "JSON Hatası: Sunucudan gelen yanıt ayrıştırılamadı."
+        st.error(f"Veri çekilirken bir ağ hatası oluştu: {e}")
+        return pd.DataFrame() # Hata durumunda boş DataFrame döndür
+    except ValueError as e:
+        # JSON parse hatası olursa
+        st.error(f"Veri formatı hatalı (JSON bekleniyordu): {e}")
+        st.info("Lütfen Google Apps Script'inizin doğru bir JSON dizisi döndürdüğünden emin olun.")
+        return pd.DataFrame()
 
-# --------------------------------------------------------------------------------
-# Yardımcı Fonksiyonlar ve Ana Arayüz
-# --------------------------------------------------------------------------------
 
-def show_branch_details_modal(branch_data):
-    """
-    Seçilen şubenin detaylarını gösteren bir modal pencere oluşturur.
-    """
-    modal = st.modal(f"Şube Detayları: {branch_data.get('branch', 'N/A')}")
-    with modal:
-        ciro = branch_data.get('totalCiro', 0)
-        sales_count = branch_data.get('successfulSalesCount', 0)
-        call_count = branch_data.get('totalCalls', 0)
-        sale_rate = branch_data.get('saleRate', 0)
-        avg_ciro = branch_data.get('averageCiro', 0)
+# -----------------------------------------------------------------------------
+# Arayüz (UI) Oluşturma
+# -----------------------------------------------------------------------------
 
-        st.markdown(f"**Toplam Ciro:** {ciro:,.2f} TL")
-        st.markdown(f"**Başarılı Satış Sayısı:** {sales_count} Adet")
-        st.markdown(f"**Toplam Arama Sayısı:** {call_count} Adet")
-        st.markdown(f"**Başarılı Satış Oranı:** {sale_rate}%")
-        st.markdown(f"**Ortalama Satış Cirosu:** {avg_ciro:,.2f} TL")
-
-# --- ANA UYGULAMA ---
-
-local_css()
-
-# Logo ve Başlık
-col1, col2, col3 = st.columns([1, 2, 1])
+# --- Başlık ve Logo ---
+col1, col2 = st.columns([1, 4])
+with col1:
+    # Şirket logosu. Hata durumunda placeholder gösterilir.
+    st.image("https://static.ticimax.cloud/32769/uploads/editoruploads/hedef-image/logo.png", width=150)
 with col2:
-    st.image(
-        "https://static.ticimax.cloud/32769/uploads/editoruploads/hedef-image/logo.png",
-        use_column_width=True
-    )
-st.title("Satış Liderlik Tablosu")
+    st.title("Satış Liderlik Tablosu")
+    st.markdown("Şubelerin aylık ciro performanslarını takip edin.")
 
-# Filtreleme Kontrolleri
-month_names = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+# --- Filtreleme Seçenekleri ---
+st.sidebar.header("Filtreler")
+
+# Ay ve yıl seçimi için listeler oluşturulur.
+month_names = [
+    'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+]
+month_map = {name: i for i, name in enumerate(month_names)} # Ay ismini sayısal değere çevirir
+
 current_year = datetime.now().year
-current_month_index = datetime.now().month - 1
+current_month_name = month_names[datetime.now().month - 1]
 
-filter_cols = st.columns(3)
-with filter_cols[0]:
-    selected_month_name = st.selectbox("Ay Seçin", month_names, index=current_month_index)
-with filter_cols[1]:
-    selected_year = st.selectbox("Yıl Seçin", range(current_year, current_year - 5, -1))
-with filter_cols[2]:
-    st.write("") # Boşluk için
-    st.write("") # Boşluk için
-    apply_filter = st.button("Filtrele", use_container_width=True)
+# Sidebar üzerinde ay ve yıl seçimi için selectbox'lar
+selected_month_name = st.sidebar.selectbox(
+    "Ay Seçin",
+    options=month_names,
+    index=datetime.now().month - 1
+)
+selected_year = st.sidebar.selectbox(
+    "Yıl Seçin",
+    options=range(current_year, current_year - 5, -1)
+)
 
-# Seçilen ayın sayısal değerini bul
-selected_month_index = month_names.index(selected_month_name)
+# Seçilen ay ismini sayısal değere çevir
+selected_month_index = month_map[selected_month_name]
 
-# Verileri çek ve göster
-with st.spinner('Liderlik tablosu verileri yükleniyor...'):
-    df, error_message = fetch_leaderboard_data(selected_month_index, selected_year)
+# --- Verileri Çek ve Göster ---
+# `st.spinner` ile veri yüklenirken kullanıcıya bilgi verilir.
+with st.spinner(f"{selected_month_name} {selected_year} verileri yükleniyor..."):
+    leaderboard_df = fetch_data(selected_month_index, selected_year)
 
-if error_message:
-    st.error(error_message)
-elif df.empty:
-    st.warning("Seçili dönem için veri bulunamadı.")
+# Veri başarıyla çekildiyse işlemlere devam et
+if not leaderboard_df.empty:
+    st.success(f"**{selected_month_name} {selected_year}** dönemi liderlik tablosu başarıyla yüklendi.")
+    st.markdown("---")
+
+    # --- TOP 3 Performans Kartları ---
+    st.subheader("🏆 Ayın En İyi Performans Gösterenleri")
+    top_3 = leaderboard_df.head(3)
+    
+    # st.columns ile 3'lü sütun yapısı oluşturulur
+    cols = st.columns(3)
+    medals = ["🥇", "🥈", "🥉"]
+    
+    for i, row in top_3.iterrows():
+        with cols[i]:
+            # st.metric ile vurgulu ve ikonlu veri gösterimi yapılır
+            st.metric(
+                label=f"{medals[i]} {row['branch']}",
+                value=f"{row['totalCiro']:,.2f} TL",
+                help=f"Sıra: {row['Sıra']}"
+            )
+
+    st.markdown("---")
+
+    # --- Liderlik Tablosu ve Grafik ---
+    col1, col2 = st.columns([1, 1], gap="large")
+
+    with col1:
+        # --- Diğer Şubeler Tablosu (4. sıradan itibaren) ---
+        st.subheader("Genel Sıralama")
+        other_branches = leaderboard_df.copy()
+        
+        # Tabloda gösterilecek sütunlar seçilir ve formatlanır
+        display_cols = ['Sıra', 'branch', 'totalCiro', 'successfulSalesCount', 'saleRate']
+        other_branches_display = other_branches[display_cols]
+        other_branches_display = other_branches_display.rename(columns={
+            'branch': 'Şube',
+            'totalCiro': 'Toplam Ciro (TL)',
+            'successfulSalesCount': 'Satış Sayısı',
+            'saleRate': 'Satış Oranı (%)'
+        })
+        
+        # st.dataframe ile interaktif bir tablo gösterilir
+        st.dataframe(
+            other_branches_display,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Toplam Ciro (TL)": st.column_config.NumberColumn(format="%.2f TL")
+            }
+        )
+
+    with col2:
+        # --- Şube Ciro Karşılaştırma Grafiği ---
+        st.subheader("Şube Ciro Karşılaştırması")
+
+        # Altair kütüphanesi ile interaktif bir çubuk grafik oluşturulur
+        chart = alt.Chart(leaderboard_df).mark_bar().encode(
+            x=alt.X('totalCiro:Q', title='Toplam Ciro (TL)'),
+            y=alt.Y('branch:N', title='Şube', sort='-x'), # Cirosu en yüksek olan en üstte olacak şekilde sırala
+            tooltip=[
+                alt.Tooltip('branch', title='Şube'),
+                alt.Tooltip('totalCiro', title='Toplam Ciro', format=',.2f TL'),
+                alt.Tooltip('Sıra', title='Sıralama')
+            ],
+            color=alt.condition(
+                # En yüksek ciroya sahip barı farklı bir renkle vurgula
+                alt.datum.totalCiro == leaderboard_df['totalCiro'].max(),
+                alt.value('orange'),  # Vurgu rengi
+                alt.value('steelblue')   # Diğer barların rengi
+            )
+        ).properties(
+            title=f"{selected_month_name} {selected_year} Ciro Dağılımı"
+        ).interactive() # Grafiğin yakınlaştırılabilir/kaydırılabilir olmasını sağlar
+
+        st.altair_chart(chart, use_container_width=True)
+
 else:
-    st.success(f"**{selected_month_name} {selected_year}** dönemi verileri başarıyla yüklendi.")
-    
-    # TOP 3 ŞUBELERİ GÖSTER
-    st.header("🏆 Ayın Liderleri 🏆")
-    top_3 = df.head(3)
-    top_3_cols = st.columns(3)
+    # Veri çekilemediyse veya boş ise kullanıcıya bilgi verilir
+    st.warning(f"**{selected_month_name} {selected_year}** dönemi için gösterilecek veri bulunamadı.")
+    st.info("Lütfen farklı bir ay/yıl seçin veya Google E-Tablonuzda ilgili dönem için veri olduğundan emin olun.")
 
-    rank_map = {0: 2, 1: 1, 2: 3} # 2., 1., 3. olarak sıralamak için
-    
-    # Kartları oluştururken kullanılacak sıra
-    display_order = [1, 0, 2] # 2. kart, 1. kart, 3. kart
-
-    for i, col_index in enumerate(display_order):
-        if i < len(top_3):
-            branch_data = top_3.iloc[i]
-            rank = i + 1
-            
-            # Kart CSS sınıfını belirle
-            if rank == 1:
-                card_class = "rank-1-card"
-                icon = '<i class="fa-solid fa-crown crown-icon"></i>'
-            elif rank == 2:
-                card_class = "rank-2-card"
-                icon = '<i class="fa-solid fa-medal crown-icon"></i>'
-            else:
-                card_class = "rank-3-card"
-                icon = '<i class="fa-solid fa-award crown-icon"></i>'
-
-            with top_3_cols[col_index]:
-                 # Kartın tüm içeriğini tek bir container'a alıp, ona özel class atıyoruz.
-                with st.container():
-                    st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
-                    st.markdown(f'<span class="card-rank-badge">{rank}</span>', unsafe_allow_html=True)
-                    st.markdown(icon, unsafe_allow_html=True)
-                    st.markdown(f"<div class='card-name'>{branch_data['branch']}</div>", unsafe_allow_html=True)
-                    st.markdown(f"<div class='card-score'>{branch_data['totalCiro']:,.2f} TL</div>", unsafe_allow_html=True)
-                    
-                    if st.button("Detayları Gör", key=f"details_{rank}"):
-                        show_branch_details_modal(branch_data)
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-
-    st.header("Genel Sıralama")
-    
-    # Grafiği göster
-    st.subheader("Şube Ciro Karşılaştırması")
-    chart_data = df[['branch', 'totalCiro']].set_index('branch')
-    st.bar_chart(chart_data, height=400)
-
-    # Geriye kalan şubelerin tablosunu göster
-    st.subheader("Tüm Şubeler")
-    remaining_branches = df.copy()
-    remaining_branches.index = remaining_branches.index + 1 # Sıralamayı 1'den başlat
-    st.dataframe(remaining_branches[['branch', 'totalCiro']].rename(columns={'branch': 'Şube Adı', 'totalCiro': 'Toplam Ciro'}))
-
-    st.info(f"Son veri güncelleme zamanı: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
-
+# Son güncelleme zamanını göster
+st.sidebar.info(f"Veriler en son {datetime.now().strftime('%d %B %Y, %H:%M:%S')} tarihinde kontrol edildi.")
