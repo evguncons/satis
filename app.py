@@ -12,9 +12,6 @@ st.set_page_config(
     layout="wide"  # HTML içeriğinin tam genişlikte görüntülenmesini sağlar.
 )
 
-st.title("Liderlik Tablosu (Orijinal Tasarım)")
-st.markdown("Bu uygulama, `index.html` dosyanızın içeriğini tasarımına müdahale etmeden doğrudan gösterir.")
-
 # -----------------------------------------------------------------------------
 # HTML Dosyasını Okuma ve Gösterme
 # -----------------------------------------------------------------------------
@@ -45,5 +42,3 @@ except FileNotFoundError:
     )
 except Exception as e:
     st.error(f"HTML dosyası okunurken beklenmedik bir hata oluştu: {e}")
-
- 
