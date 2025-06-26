@@ -46,3 +46,4 @@ except FileNotFoundError:
 except Exception as e:
     st.error(f"HTML dosyası okunurken beklenmedik bir hata oluştu: {e}")
 
+ 
