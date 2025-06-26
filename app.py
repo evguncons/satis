@@ -20,48 +20,50 @@ except Exception as e:
     html_content = f"<html><body><h1>Hata: {e}</h1></body></html>"
 
 # HTML içeriğini Streamlit'te göster
-# height parametresi belirli bir minimum değere ayarlandı (örn. 800 piksel),
-# bu sayede içeriğin başlangıçta kırpılması önlenir.
+# height parametresi daha büyük bir değere ayarlandı (örn. 1200 piksel),
+# bu sayede içeriğin kırpılması önlenir.
 # scrolling=True, içeriğin bu yüksekliği aşması durumunda kaydırma çubuklarını etkinleştirir.
-# width parametresi kaldırıldı, Streamlit geniş modda (layout="wide") içeriği otomatik olarak genişletir.
-# Ayrıca, Streamlit'in varsayılan padding'ini kaldırmak için özel CSS enjekte edebiliriz.
+# Streamlit'in varsayılan padding'ini kaldırmak için özel CSS enjekte edebiliriz.
 st.markdown("""
     <style>
         .block-container {
-            padding-left: 0rem;
-            padding-right: 0rem;
-            padding-top: 0rem;
-            padding-bottom: 0rem;
-            margin-left: 0;
-            margin-right: 0;
-            margin-top: 0;
-            margin-bottom: 0;
-        }
-        .reportview-container .main .block-container {
-            padding-top: 0rem;
-            padding-bottom: 0rem;
-            padding-left: 0rem;
-            padding-right: 0rem;
-        }
-        .css-fg4lnf { /* Streamlit'in ana div'i, versiyona göre değişebilir */
-            padding-left: 0rem !important;
-            padding-right: 0rem !important;
-        }
-        header.st-emotion-cache-c69x0g.e1t1953018 { /* Streamlit header */
-            display: none !important;
-        }
-        .st-emotion-cache-18ni7ap { /* Streamlit main block for apps (padding) */
             padding-left: 0rem !important;
             padding-right: 0rem !important;
             padding-top: 0rem !important;
+            padding-bottom: 0rem !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
         }
-        .st-emotion-cache-z5rd0y { /* Streamlit header when deployed */
-            display: none;
+        .reportview-container .main .block-container {
+            padding-top: 0rem !important;
+            padding-bottom: 0rem !important;
+            padding-left: 0rem !important;
+            padding-right: 0rem !important;
+        }
+        /* Streamlit'in ana div'leri için padding'i sıfırla */
+        /* Bu seçiciler Streamlit versiyonlarına göre değişebilir, ancak en yaygın olanları hedefler */
+        .css-fg4lnf, .st-emotion-cache-18ni7ap { /* Genel Streamlit konteynerleri */
+            padding-left: 0rem !important;
+            padding-right: 0rem !important;
+            padding-top: 0rem !important;
+            padding-bottom: 0rem !important;
+            margin: 0 !important;
+        }
+        header.st-emotion-cache-c69x0g.e1t1953018, .st-emotion-cache-z5rd0y { /* Streamlit header */
+            display: none !important;
+            height: 0px !important;
+        }
+        /* html elementinin scrollbarını gizle, iframe'in kendisi scroll etsin */
+        html {
+            overflow: hidden !important;
         }
     </style>
     """, unsafe_allow_html=True)
 
-components.html(html_content, height=800, scrolling=True) 
+# Yüksekliği artırıldı
+components.html(html_content, height=1200, scrolling=True) 
 
 # Streamlit uygulamanızın altında hata ayıklama veya bilgi mesajları gösterebilirsiniz
 # st.sidebar.header("Uygulama Bilgisi")
