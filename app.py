@@ -20,8 +20,8 @@ except Exception as e:
 
 # HTML içeriğini Streamlit'te göster
 # height=None, içeriğin yüksekliğine göre otomatik ayarlanmasını sağlar.
-# width="100%" Streamlit konteynerinin tam genişliğini kullanır.
-components.html(html_content, height=None, width="100%", scrolling=True)
+# width="100%" parametresi kaldırıldı, Streamlit varsayılan olarak tam genişliği kullanır.
+components.html(html_content, height=None, scrolling=True)
 
 # Streamlit uygulamanızın altında hata ayıklama veya bilgi mesajları gösterebilirsiniz
 # st.sidebar.header("Uygulama Bilgisi")
