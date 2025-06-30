@@ -49,7 +49,7 @@
         .modal-detail-item { margin-bottom: 12px; font-size: 1.1rem; color: #e0e0e0; }
         .modal-detail-item strong { color: #ffffff; font-weight: 600; }
         .chart-container { width: 100%; max-width: 700px; margin-top: 40px; padding: 20px; background-color: rgba(0, 0, 0, 0.4); border-radius: 12px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); color: #ffffff; }
-        .sales-feed-item { background-color: rgba(75, 0, 130, 0.6); border-left: 4px solid #facc15; animation: slideIn 0.5s ease-out forwards; }
+        .sales-feed-item { background-color: rgba(255, 255, 255, 0.05); border-left: 4px solid #facc15; animation: slideIn 0.5s ease-out forwards; }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
         @media (max-width: 768px) { .filter-controls { flex-direction: column; gap: 10px; width: 80%; margin: 0 auto; } .filter-controls select, .filter-controls button { width: 100%; } }
         @media (max-width: 640px) { body { padding: 10px; } .main-content-wrapper { margin-top: 0; padding: 10px; } .logo-img { max-width: 150px; } .leaderboard-title { font-size: 2rem; } .top-3-section { flex-direction: column; align-items: center; gap: 15px; } .top-player-card { width: 80%; transform: translateY(0) !important; } .top-player-card.rank-1 .crown-icon-top { top: -20px; width: 45px; height: 45px; } .leaderboard-table th, .leaderboard-table td { padding: 8px; font-size: 0.8rem; } .modal-content { padding: 15px; max-width: 95%; } .modal-title { font-size: 1.5rem; } }
@@ -67,7 +67,6 @@
             <h1 class="leaderboard-title">LİDERLİK TABLOSU</h1>
             
             <div class="filter-controls flex justify-center items-center flex-wrap gap-4 mb-6">
-                <!-- Dropdown'lar dinamik olarak doldurulacak -->
                 <select id="periodSelect" class="p-2 border-gray-600 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"></select>
                 <select id="sortSelect" class="p-2 border-gray-600 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <option value="totalCiro" selected>Sırala: Toplam Ciro</option>
@@ -100,7 +99,12 @@
             </table>
             
             <div id="liveSalesTracker" class="mt-10 w-full">
-                <h3 class="text-xl font-bold uppercase tracking-wider text-white text-center mb-4">Canlı Satış Akışı</h3>
+                <h3 class="text-xl font-bold uppercase tracking-wider text-white text-center mb-4 flex justify-center items-center">
+                    <span>Canlı Satış Akışı</span>
+                    <button id="soundToggle" class="ml-4 text-xl text-gray-300 hover:text-white focus:outline-none" title="Sesi Aç/Kapat">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                </h3>
                 <div id="liveSalesFeed" class="space-y-3"></div>
             </div>
 
@@ -131,6 +135,7 @@
         let myChart; 
         let allBranchDataGlobal = [];
         let lastRowsGlobal = {};
+        let isSoundOn = true; // Ses durumu için yeni değişken
         
         const GOOGLE_APPS_SCRIPT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwHjG2pWCFT3nZm2jfl1shZ5E6VV0wwoWiogJN-UH73iLDJ8iHpkQgM5jDR275anBnuEA/exec'; 
 
@@ -148,6 +153,7 @@
             const modalBranchName = document.getElementById('modalBranchName');
             const modalDetails = document.getElementById('modalDetails');
             const closeButton = document.querySelector('.close-button');
+            const soundToggleButton = document.getElementById('soundToggle'); // Ses düğmesini al
 
             const synth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 } }).toDestination();
 
@@ -164,7 +170,6 @@
 
             const createPlayerCardHTML = (rank, branchData, criteria) => {
                 if (!branchData || branchData.branch === 'Yükleniyor...') {
-                    // Yükleniyor durumunda sadece spinner göster
                     return `<div class="flex items-center justify-center h-full"><svg class="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>`;
                 }
                 const score = formatValue(branchData[criteria], criteria);
@@ -179,22 +184,17 @@
                 const headerOption = sortSelect.querySelector(`option[value="${sortCriteria}"]`);
                 tableHeaderValue.textContent = headerOption ? headerOption.textContent.replace('Sırala: ', '') : 'Değer';
                 
-                const [rank1Data, rank2Data, rank3Data] = sortedData;
+                const rank1Data = sortedData[0] || null;
+                const rank2Data = sortedData[1] || null;
+                const rank3Data = sortedData[2] || null;
+
                 document.getElementById('rank1Card').innerHTML = createPlayerCardHTML(1, rank1Data, sortCriteria);
                 document.getElementById('rank2Card').innerHTML = createPlayerCardHTML(2, rank2Data, sortCriteria);
                 document.getElementById('rank3Card').innerHTML = createPlayerCardHTML(3, rank3Data, sortCriteria);
                 
-                // İlk 3 kart için onclick olayını ata (index'e göre doğru veriyi bul)
-                document.querySelectorAll('.top-player-card').forEach(card => {
-                    card.onclick = (e) => {
-                        // Kartın rank numarasını alarak doğru veriyi bul
-                        const rankClass = Array.from(e.currentTarget.classList).find(c => c.startsWith('rank-'));
-                        if (!rankClass) return;
-                        const rank = parseInt(rankClass.replace('rank-', ''));
-                        const branchData = sortedData[rank - 1];
-                        if (branchData) showBranchDetails(branchData);
-                    };
-                });
+                if (rank1Data) document.getElementById('rank1Card').onclick = () => showBranchDetails(rank1Data);
+                if (rank2Data) document.getElementById('rank2Card').onclick = () => showBranchDetails(rank2Data);
+                if (rank3Data) document.getElementById('rank3Card').onclick = () => showBranchDetails(rank3Data);
                 
                 leaderboardBody.innerHTML = '';
                 if (sortedData.length === 0 && !errorMessage.textContent) {
@@ -217,27 +217,22 @@
                  errorMessage.classList.add('hidden');
                  errorMessage.textContent = '';
                  
-                 // Ana tablo için yükleniyor göstergesi
                  leaderboardBody.innerHTML = `<tr><td colspan="3" class="text-center py-8"><div class="flex justify-center items-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>${message}</span></div></td></tr>`;
                 
-                 // GÜNCELLEME: Top 3 kartları için yükleniyor göstergesi
                  document.getElementById('rank1Card').innerHTML = createPlayerCardHTML(1, { branch: 'Yükleniyor...' });
                  document.getElementById('rank2Card').innerHTML = createPlayerCardHTML(2, { branch: 'Yükleniyor...' });
                  document.getElementById('rank3Card').innerHTML = createPlayerCardHTML(3, { branch: 'Yükleniyor...' });
 
-                 // Grafiği temizle
-                 if (myChart) {
-                     myChart.destroy();
-                 }
+                 if (myChart) myChart.destroy();
 
-                 // Toplam ciro için yükleniyor göstergesi
                  totalCiroValueElement.textContent = 'Hesaplanıyor...';
             };
 
             async function fetchAvailablePeriods() {
                 setLoadingState("Dönemler yükleniyor...");
                 try {
-                    const response = await fetch(`${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getAvailablePeriods`);
+                    const response = await fetch(`${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getAvailablePeriods&t=${new Date().getTime()}`);
+                    if (!response.ok) throw new Error(`Sunucu hatası: ${response.status}`);
                     const periods = await response.json();
                     if (periods.error) throw new Error(periods.error);
                     
@@ -256,7 +251,6 @@
                         periodSelect.add(option);
                     });
                     
-                    // İçinde bulunulan ayı otomatik seç
                     const now = new Date();
                     const currentMonthName = monthOrder[now.getMonth()];
                     const currentYear = now.getFullYear();
@@ -266,7 +260,6 @@
                         periodSelect.value = currentPeriodName;
                     }
 
-                    // Dönemler yüklendikten sonra ilk dönemin verilerini getir
                     await fetchLeaderboardData();
 
                 } catch (error) {
@@ -285,7 +278,9 @@
                 setLoadingState(`'${selectedPeriod}' verileri yükleniyor...`);
                 currentPeriodDisplay.textContent = `Dönem: ${selectedPeriod}`;
                 try {
-                    const response = await fetch(`${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getLeaderboard&sheetName=${encodeURIComponent(selectedPeriod)}`);
+                    const url = `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getLeaderboard&sheetName=${encodeURIComponent(selectedPeriod)}&t=${new Date().getTime()}`;
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`Sunucu hatası: ${response.status}`);
                     const data = await response.json();
                     if(data.error) throw new Error(data.error);
 
@@ -305,11 +300,12 @@
             
             async function pollForNewSales() {
                 const selectedPeriod = periodSelect.value;
-                if (!selectedPeriod) return;
+                if (!selectedPeriod || Object.keys(lastRowsGlobal).length === 0) return;
 
                 try {
-                    const url = `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getLatestSales&sheetName=${encodeURIComponent(selectedPeriod)}&lastRows=${encodeURIComponent(JSON.stringify(lastRowsGlobal))}`;
+                    const url = `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getLatestSales&sheetName=${encodeURIComponent(selectedPeriod)}&lastRows=${encodeURIComponent(JSON.stringify(lastRowsGlobal))}&t=${new Date().getTime()}`;
                     const response = await fetch(url);
+                    if (!response.ok) return;
                     const data = await response.json();
                     if (data.error) throw new Error(data.error);
 
@@ -319,7 +315,7 @@
                             const branchToUpdate = allBranchDataGlobal.find(b => b.branch === sale.branch);
                             if(branchToUpdate) {
                                 branchToUpdate.totalCiro += sale.amount;
-                                branchToUpdate.successfulSalesCount += 1; // Başarı sayısını da artırabiliriz
+                                branchToUpdate.successfulSalesCount += 1;
                             } else {
                                 allBranchDataGlobal.push({ branch: sale.branch, totalCiro: sale.amount, successfulSalesCount: 1, totalCalls: 0, saleRate: 0, averageCiro: 0 });
                             }
@@ -333,13 +329,13 @@
                     lastRowsGlobal = data.newLastRows;
 
                 } catch (error) {
-                    console.error("Yeni satışlar alınırken hata oluştu:", error);
+                    console.error("Yeni satışlar alınırken hata oluştu:", error.message);
                 }
             }
 
             function startLiveSalesPolling() {
                 if(pollingInterval) clearInterval(pollingInterval);
-                pollingInterval = setInterval(pollForNewSales, 10000); // 10 saniyede bir kontrol
+                pollingInterval = setInterval(pollForNewSales, 10000);
             }
 
             function renderChart(data) {
@@ -367,10 +363,23 @@
             }
 
             function addLiveSale(branch, amount) {
-                synth.triggerAttackRelease("G5", "16n", Tone.now());
+                if (isSoundOn) {
+                    if (Tone.context.state !== 'running') {
+                        Tone.start().then(() => synth.triggerAttackRelease("G5", "8n"));
+                    } else {
+                        synth.triggerAttackRelease("G5", "8n");
+                    }
+                }
                 const saleItem = document.createElement('div');
-                saleItem.className = 'sales-feed-item p-3 rounded-lg flex justify-between items-center';
-                saleItem.innerHTML = `<div><span class="font-bold text-yellow-400">${branch}</span><span class="text-gray-300"> yeni bir satış yaptı!</span></div><div class="font-semibold text-white">${formatValue(amount, 'totalCiro')}</div>`;
+                saleItem.className = 'sales-feed-item p-3 rounded-lg flex items-center gap-3';
+                saleItem.innerHTML = `
+                    <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-purple-800 rounded-full">
+                        <i class="fas fa-store text-yellow-400"></i>
+                    </div>
+                    <div class="flex-grow text-left">
+                        <span class="font-bold text-white">${branch}</span>
+                        <span class="text-gray-300 text-sm block">${formatValue(amount, 'totalCiro')} tutarında yeni bir satış yaptı!</span>
+                    </div>`;
                 liveSalesFeed.prepend(saleItem);
                 if (liveSalesFeed.children.length > 5) {
                     liveSalesFeed.lastChild.remove();
@@ -378,6 +387,13 @@
             }
             
             // Olay Dinleyicileri
+            soundToggleButton.onclick = () => {
+                isSoundOn = !isSoundOn;
+                soundToggleButton.innerHTML = `<i class="fas ${isSoundOn ? 'fa-volume-up' : 'fa-volume-mute'}"></i>`;
+                if(isSoundOn && Tone.context.state !== 'running') {
+                    Tone.start();
+                }
+            };
             closeButton.onclick = () => document.getElementById('branchDetailModal').style.display = 'none';
             window.onclick = (event) => { if (event.target == document.getElementById('branchDetailModal')) document.getElementById('branchDetailModal').style.display = 'none'; };
             applyFilterButton.onclick = () => { if (Tone.context.state !== 'running') Tone.start(); fetchLeaderboardData(); };
