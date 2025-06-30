@@ -49,8 +49,9 @@
         .modal-detail-item { margin-bottom: 12px; font-size: 1.1rem; color: #e0e0e0; }
         .modal-detail-item strong { color: #ffffff; font-weight: 600; }
         .chart-container { width: 100%; max-width: 700px; margin-top: 40px; padding: 20px; background-color: rgba(0, 0, 0, 0.4); border-radius: 12px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); color: #ffffff; }
-        .sales-feed-item { background-color: rgba(255, 255, 255, 0.05); border-left: 4px solid #facc15; animation: slideIn 0.5s ease-out forwards; }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+        .sales-feed-item { background: linear-gradient(to right, #8e2de2, #4a00e0); border-left: 4px solid #fde047; animation: slideIn 0.5s ease-out forwards; transition: opacity 0.5s ease-out; }
+        .sales-feed-item.fade-out { opacity: 0; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
         @media (max-width: 768px) { .filter-controls { flex-direction: column; gap: 10px; width: 80%; margin: 0 auto; } .filter-controls select, .filter-controls button { width: 100%; } }
         @media (max-width: 640px) { body { padding: 10px; } .main-content-wrapper { margin-top: 0; padding: 10px; } .logo-img { max-width: 150px; } .leaderboard-title { font-size: 2rem; } .top-3-section { flex-direction: column; align-items: center; gap: 15px; } .top-player-card { width: 80%; transform: translateY(0) !important; } .top-player-card.rank-1 .crown-icon-top { top: -20px; width: 45px; height: 45px; } .leaderboard-table th, .leaderboard-table td { padding: 8px; font-size: 0.8rem; } .modal-content { padding: 15px; max-width: 95%; } .modal-title { font-size: 1.5rem; } }
     </style>
@@ -135,7 +136,7 @@
         let myChart; 
         let allBranchDataGlobal = [];
         let lastRowsGlobal = {};
-        let isSoundOn = true; // Ses durumu için yeni değişken
+        let isSoundOn = true;
         
         const GOOGLE_APPS_SCRIPT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwHjG2pWCFT3nZm2jfl1shZ5E6VV0wwoWiogJN-UH73iLDJ8iHpkQgM5jDR275anBnuEA/exec'; 
 
@@ -153,7 +154,7 @@
             const modalBranchName = document.getElementById('modalBranchName');
             const modalDetails = document.getElementById('modalDetails');
             const closeButton = document.querySelector('.close-button');
-            const soundToggleButton = document.getElementById('soundToggle'); // Ses düğmesini al
+            const soundToggleButton = document.getElementById('soundToggle');
 
             const synth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 } }).toDestination();
 
@@ -216,15 +217,11 @@
             const setLoadingState = (message = "Veriler Yükleniyor...") => {
                  errorMessage.classList.add('hidden');
                  errorMessage.textContent = '';
-                 
                  leaderboardBody.innerHTML = `<tr><td colspan="3" class="text-center py-8"><div class="flex justify-center items-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>${message}</span></div></td></tr>`;
-                
                  document.getElementById('rank1Card').innerHTML = createPlayerCardHTML(1, { branch: 'Yükleniyor...' });
                  document.getElementById('rank2Card').innerHTML = createPlayerCardHTML(2, { branch: 'Yükleniyor...' });
                  document.getElementById('rank3Card').innerHTML = createPlayerCardHTML(3, { branch: 'Yükleniyor...' });
-
                  if (myChart) myChart.destroy();
-
                  totalCiroValueElement.textContent = 'Hesaplanıyor...';
             };
 
@@ -242,14 +239,9 @@
                     periods.sort((a, b) => {
                         const [monthA, yearA] = a.split(' ');
                         const [monthB, yearB] = b.split(' ');
-                        if (parseInt(yearA) !== parseInt(yearB)) {
-                            return parseInt(yearB) - parseInt(yearA);
-                        }
+                        if (parseInt(yearA) !== parseInt(yearB)) return parseInt(yearB) - parseInt(yearA);
                         return monthOrder.indexOf(monthB) - monthOrder.indexOf(monthA);
-                    }).forEach(period => {
-                        const option = new Option(period, period);
-                        periodSelect.add(option);
-                    });
+                    }).forEach(period => periodSelect.add(new Option(period, period)));
                     
                     const now = new Date();
                     const currentMonthName = monthOrder[now.getMonth()];
@@ -310,14 +302,19 @@
                     if (data.error) throw new Error(data.error);
 
                     if (data.newSales && data.newSales.length > 0) {
+                        const now = Date.now();
                         data.newSales.forEach(sale => {
-                            addLiveSale(sale.branch, sale.amount);
-                            const branchToUpdate = allBranchDataGlobal.find(b => b.branch === sale.branch);
-                            if(branchToUpdate) {
-                                branchToUpdate.totalCiro += sale.amount;
-                                branchToUpdate.successfulSalesCount += 1;
-                            } else {
-                                allBranchDataGlobal.push({ branch: sale.branch, totalCiro: sale.amount, successfulSalesCount: 1, totalCalls: 0, saleRate: 0, averageCiro: 0 });
+                            const saleTimestamp = new Date(sale.timestamp).getTime();
+                            // Son 2 saat içindeki satışları göster
+                            if ((now - saleTimestamp) < 7200000) { // 2 hours in ms
+                                addLiveSale(sale.branch, sale.amount, saleTimestamp);
+                                const branchToUpdate = allBranchDataGlobal.find(b => b.branch === sale.branch);
+                                if(branchToUpdate) {
+                                    branchToUpdate.totalCiro += sale.amount;
+                                    branchToUpdate.successfulSalesCount += 1;
+                                } else {
+                                    allBranchDataGlobal.push({ branch: sale.branch, totalCiro: sale.amount, successfulSalesCount: 1, totalCalls: 0, saleRate: 0, averageCiro: 0 });
+                                }
                             }
                         });
 
@@ -362,44 +359,41 @@
                 document.getElementById('branchDetailModal').style.display = 'flex';
             }
 
-            function addLiveSale(branch, amount) {
+            function addLiveSale(branch, amount, timestamp) {
                 if (isSoundOn) {
-                    if (Tone.context.state !== 'running') {
-                        Tone.start().then(() => synth.triggerAttackRelease("G5", "8n"));
-                    } else {
-                        synth.triggerAttackRelease("G5", "8n");
-                    }
+                    if (Tone.context.state !== 'running') Tone.start().then(() => synth.triggerAttackRelease("G5", "8n"));
+                    else synth.triggerAttackRelease("G5", "8n");
                 }
                 const saleItem = document.createElement('div');
-                saleItem.className = 'sales-feed-item p-3 rounded-lg flex items-center gap-3';
+                saleItem.className = 'sales-feed-item p-3 rounded-lg flex items-center gap-3 shadow-lg';
+                saleItem.dataset.timestamp = timestamp;
                 saleItem.innerHTML = `
-                    <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-purple-800 rounded-full">
-                        <i class="fas fa-store text-yellow-400"></i>
+                    <div class="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-yellow-400 rounded-full text-purple-900 text-2xl shadow-md">
+                        <i class="fas fa-dollar-sign"></i>
                     </div>
                     <div class="flex-grow text-left">
-                        <span class="font-bold text-white">${branch}</span>
-                        <span class="text-gray-300 text-sm block">${formatValue(amount, 'totalCiro')} tutarında yeni bir satış yaptı!</span>
+                        <span class="font-extrabold text-lg text-white block">${branch}</span>
+                        <span class="text-yellow-300 font-bold text-xl block">${formatValue(amount, 'totalCiro')}</span>
                     </div>`;
                 liveSalesFeed.prepend(saleItem);
-                if (liveSalesFeed.children.length > 5) {
-                    liveSalesFeed.lastChild.remove();
-                }
+                
+                // 1 saat sonra bildirimi kaldır
+                setTimeout(() => {
+                    saleItem.classList.add('fade-out');
+                    setTimeout(() => saleItem.remove(), 500);
+                }, 3600000);
             }
             
-            // Olay Dinleyicileri
             soundToggleButton.onclick = () => {
                 isSoundOn = !isSoundOn;
                 soundToggleButton.innerHTML = `<i class="fas ${isSoundOn ? 'fa-volume-up' : 'fa-volume-mute'}"></i>`;
-                if(isSoundOn && Tone.context.state !== 'running') {
-                    Tone.start();
-                }
+                if(isSoundOn && Tone.context.state !== 'running') Tone.start();
             };
             closeButton.onclick = () => document.getElementById('branchDetailModal').style.display = 'none';
             window.onclick = (event) => { if (event.target == document.getElementById('branchDetailModal')) document.getElementById('branchDetailModal').style.display = 'none'; };
             applyFilterButton.onclick = () => { if (Tone.context.state !== 'running') Tone.start(); fetchLeaderboardData(); };
             sortSelect.onchange = () => { if (allBranchDataGlobal.length > 0) updateDisplay(); };
 
-            // Başlangıç
             fetchAvailablePeriods();
         });
     </script>
