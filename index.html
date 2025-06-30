@@ -49,14 +49,21 @@
         .modal-detail-item { margin-bottom: 12px; font-size: 1.1rem; color: #e0e0e0; }
         .modal-detail-item strong { color: #ffffff; font-weight: 600; }
         .chart-container { width: 100%; max-width: 700px; margin-top: 40px; padding: 20px; background-color: rgba(0, 0, 0, 0.4); border-radius: 12px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); color: #ffffff; }
-        .sales-feed-item { background: linear-gradient(to right, #8e2de2, #4a00e0); border-left: 4px solid #fde047; animation: slideIn 0.5s ease-out forwards; transition: opacity 0.5s ease-out; }
-        .sales-feed-item.fade-out { opacity: 0; }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
+        
+        /* Yeni Twitch Tarzı Bildirim Stilleri */
+        .sales-alert-item { animation: enter-from-right 0.6s ease-out forwards; }
+        .sales-alert-item.fade-out { animation: leave-to-right 0.6s ease-out forwards; }
+        @keyframes enter-from-right { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes leave-to-right { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+
         @media (max-width: 768px) { .filter-controls { flex-direction: column; gap: 10px; width: 80%; margin: 0 auto; } .filter-controls select, .filter-controls button { width: 100%; } }
         @media (max-width: 640px) { body { padding: 10px; } .main-content-wrapper { margin-top: 0; padding: 10px; } .logo-img { max-width: 150px; } .leaderboard-title { font-size: 2rem; } .top-3-section { flex-direction: column; align-items: center; gap: 15px; } .top-player-card { width: 80%; transform: translateY(0) !important; } .top-player-card.rank-1 .crown-icon-top { top: -20px; width: 45px; height: 45px; } .leaderboard-table th, .leaderboard-table td { padding: 8px; font-size: 0.8rem; } .modal-content { padding: 15px; max-width: 95%; } .modal-title { font-size: 1.5rem; } }
     </style>
 </head>
 <body>
+    <!-- Canlı Satış Akışı için Yeni Konteyner -->
+    <div id="live-alert-container" class="fixed top-4 right-4 w-80 space-y-3 z-50"></div>
+
     <div class="main-content-wrapper">
         <div class="logo-container">
             <img id="logo" src="https://static.ticimax.cloud/32769/uploads/editoruploads/hedef-image/logo.png" 
@@ -99,15 +106,13 @@
                 <tbody id="leaderboardBody"></tbody>
             </table>
             
-            <div id="liveSalesTracker" class="mt-10 w-full">
-                <h3 class="text-xl font-bold uppercase tracking-wider text-white text-center mb-4 flex justify-center items-center">
-                    <span>Canlı Satış Akışı</span>
-                    <button id="soundToggle" class="ml-4 text-xl text-gray-300 hover:text-white focus:outline-none" title="Sesi Aç/Kapat">
-                        <i class="fas fa-volume-up"></i>
-                    </button>
-                </h3>
-                <div id="liveSalesFeed" class="space-y-3"></div>
+            <div id="sound-control-container" class="mt-8">
+                <button id="soundToggle" class="text-xl text-gray-300 hover:text-white focus:outline-none flex items-center gap-2" title="Sesi Aç/Kapat">
+                    <span>Canlı Akış Sesi:</span>
+                    <i class="fas fa-volume-up"></i>
+                </button>
             </div>
+
 
             <div id="totalCiroContainer" class="mt-8 pt-6 border-t border-gray-600 text-center">
                 <h3 class="text-xl font-bold uppercase tracking-wider text-white">Tüm Şubeler Toplam Ciro</h3>
@@ -150,7 +155,7 @@
             const applyFilterButton = document.getElementById('applyFilter');
             const totalCiroValueElement = document.getElementById('totalCiroValue');
             const tableHeaderValue = document.getElementById('tableHeaderValue');
-            const liveSalesFeed = document.getElementById('liveSalesFeed');
+            const liveAlertContainer = document.getElementById('live-alert-container');
             const modalBranchName = document.getElementById('modalBranchName');
             const modalDetails = document.getElementById('modalDetails');
             const closeButton = document.querySelector('.close-button');
@@ -305,8 +310,7 @@
                         const now = Date.now();
                         data.newSales.forEach(sale => {
                             const saleTimestamp = new Date(sale.timestamp).getTime();
-                            // Son 2 saat içindeki satışları göster
-                            if ((now - saleTimestamp) < 7200000) { // 2 hours in ms
+                            if ((now - saleTimestamp) < 7200000) { // Son 2 saat
                                 addLiveSale(sale.branch, sale.amount, saleTimestamp);
                                 const branchToUpdate = allBranchDataGlobal.find(b => b.branch === sale.branch);
                                 if(branchToUpdate) {
@@ -365,7 +369,7 @@
                     else synth.triggerAttackRelease("G5", "8n");
                 }
                 const saleItem = document.createElement('div');
-                saleItem.className = 'sales-feed-item p-3 rounded-lg flex items-center gap-3 shadow-lg';
+                saleItem.className = 'sales-alert-item bg-gradient-to-br from-purple-600 to-indigo-700 p-4 rounded-lg shadow-2xl border-l-4 border-yellow-400 flex items-center gap-4';
                 saleItem.dataset.timestamp = timestamp;
                 saleItem.innerHTML = `
                     <div class="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-yellow-400 rounded-full text-purple-900 text-2xl shadow-md">
@@ -375,18 +379,17 @@
                         <span class="font-extrabold text-lg text-white block">${branch}</span>
                         <span class="text-yellow-300 font-bold text-xl block">${formatValue(amount, 'totalCiro')}</span>
                     </div>`;
-                liveSalesFeed.prepend(saleItem);
+                liveAlertContainer.prepend(saleItem);
                 
-                // 1 saat sonra bildirimi kaldır
                 setTimeout(() => {
                     saleItem.classList.add('fade-out');
-                    setTimeout(() => saleItem.remove(), 500);
-                }, 3600000);
+                    setTimeout(() => saleItem.remove(), 600);
+                }, 3600000); // 1 saat sonra kaldır
             }
             
             soundToggleButton.onclick = () => {
                 isSoundOn = !isSoundOn;
-                soundToggleButton.innerHTML = `<i class="fas ${isSoundOn ? 'fa-volume-up' : 'fa-volume-mute'}"></i>`;
+                soundToggleButton.querySelector('i').className = `fas ${isSoundOn ? 'fa-volume-up' : 'fa-volume-mute'}`;
                 if(isSoundOn && Tone.context.state !== 'running') Tone.start();
             };
             closeButton.onclick = () => document.getElementById('branchDetailModal').style.display = 'none';
