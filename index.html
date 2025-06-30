@@ -144,7 +144,7 @@
                 if (autoRefreshInterval) clearInterval(autoRefreshInterval);
                 autoRefreshInterval = setInterval(() => {
                     fetchLeaderboardData(true); // Arka planda sessiz yenileme yap
-                }, 5000); // 5 saniye
+                }, 30000); // 30 saniye
             };
 
             const formatValue = (value, criteria) => {
