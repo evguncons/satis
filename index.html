@@ -106,7 +106,6 @@
                 <p id="totalCiroValue" class="text-4xl font-extrabold text-yellow-400 mt-2" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">0 TL</p>
             </div>
 
-            <!-- Canlı Satış Akışı Bölümü -->
             <div id="liveSalesTracker" class="mt-10 w-full">
                 <h3 class="text-xl font-bold uppercase tracking-wider text-white text-center mb-4 flex justify-center items-center">
                     <span>Canlı Satış Akışı</span>
@@ -263,14 +262,16 @@
                 }
             }
 
-            async function fetchLeaderboardData() {
+            async function fetchLeaderboardData(isSilentRefresh = false) {
                 const selectedPeriod = periodSelect.value;
                 if (!selectedPeriod) {
                     errorMessage.textContent = "Lütfen bir dönem seçin.";
                     errorMessage.classList.remove('hidden');
                     return;
                 }
-                setLoadingState(`'${selectedPeriod}' verileri yükleniyor...`);
+                if (!isSilentRefresh) {
+                   setLoadingState(`'${selectedPeriod}' verileri yükleniyor...`);
+                }
                 currentPeriodDisplay.textContent = `Dönem: ${selectedPeriod}`;
                 try {
                     const url = `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getLeaderboard&sheetName=${encodeURIComponent(selectedPeriod)}&t=${new Date().getTime()}`;
@@ -285,7 +286,9 @@
                     const totalCiro = allBranchDataGlobal.reduce((sum, item) => sum + (item.totalCiro || 0), 0);
                     totalCiroValueElement.textContent = formatValue(totalCiro, 'totalCiro');
                     updateDisplay();
-                    startLiveSalesPolling();
+                    if (!isSilentRefresh) {
+                        startLiveSalesPolling();
+                    }
 
                 } catch (error) {
                     errorMessage.textContent = `Veriler yüklenemedi: ${error.message}`;
@@ -293,6 +296,7 @@
                 }
             }
             
+            // GÜNCELLENDİ: Yeni satışları kontrol eden ve veriyi anında işleyen daha verimli fonksiyon
             async function pollForNewSales() {
                 const selectedPeriod = periodSelect.value;
                 if (!selectedPeriod || Object.keys(lastRowsGlobal).length === 0) return;
@@ -300,32 +304,55 @@
                 try {
                     const url = `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getLatestSales&sheetName=${encodeURIComponent(selectedPeriod)}&lastRows=${encodeURIComponent(JSON.stringify(lastRowsGlobal))}&t=${new Date().getTime()}`;
                     const response = await fetch(url);
-                    if (!response.ok) return;
-                    const data = await response.json();
-                    if (data.error) throw new Error(data.error);
+                    if (!response.ok) {
+                        console.error("Canlı akış yoklaması başarısız oldu, durum:", response.status);
+                        return; 
+                    }
 
-                    if (data.newSales && data.newSales.length > 0) {
+                    const data = await response.json();
+                    if (data.error) {
+                        console.error("Canlı akış sunucu hatası:", data.error);
+                        return;
+                    }
+
+                    if (data.newSales && data.newSales.length > 0 && data.newLastRows) {
                         const now = Date.now();
+                        let totalCiroChange = 0;
+
                         data.newSales.forEach(sale => {
+                            // 1. Canlı akış arayüzüne ekle
                             const saleTimestamp = new Date(sale.timestamp).getTime();
-                            if ((now - saleTimestamp) < 7200000) { // Son 2 saat
+                            if ((now - saleTimestamp) < 7200000) { // Son 2 saatteki satışlar
                                 addLiveSale(sale.branch, sale.amount, saleTimestamp);
-                                const branchToUpdate = allBranchDataGlobal.find(b => b.branch === sale.branch);
-                                if(branchToUpdate) {
-                                    branchToUpdate.totalCiro += sale.amount;
-                                    branchToUpdate.successfulSalesCount += 1;
-                                } else {
-                                    allBranchDataGlobal.push({ branch: sale.branch, totalCiro: sale.amount, successfulSalesCount: 1, totalCalls: 0, saleRate: 0, averageCiro: 0 });
-                                }
                             }
+
+                            // 2. Ana veri objesini bellekte anında güncelle
+                            const branchToUpdate = allBranchDataGlobal.find(b => b.branch === sale.branch);
+                            if (branchToUpdate) {
+                                branchToUpdate.totalCiro = (branchToUpdate.totalCiro || 0) + sale.amount;
+                                branchToUpdate.successfulSalesCount = (branchToUpdate.successfulSalesCount || 0) + 1;
+                                // Diğer metrikleri yeniden hesapla
+                                if (branchToUpdate.totalCalls > 0) {
+                                    branchToUpdate.saleRate = (branchToUpdate.successfulSalesCount / branchToUpdate.totalCalls) * 100;
+                                }
+                                branchToUpdate.averageCiro = branchToUpdate.totalCiro / branchToUpdate.successfulSalesCount;
+                            }
+                            totalCiroChange += sale.amount;
                         });
 
-                        const totalCiro = allBranchDataGlobal.reduce((sum, item) => sum + (item.totalCiro || 0), 0);
-                        totalCiroValueElement.textContent = formatValue(totalCiro, 'totalCiro');
+                        // 3. Genel toplam ciroyu güncelle
+                        const currentTotalCiro = allBranchDataGlobal.reduce((sum, item) => sum + (item.totalCiro || 0), 0);
+                        totalCiroValueElement.textContent = formatValue(currentTotalCiro, 'totalCiro');
+
+                        // 4. Bilinen son satır numaralarını anında güncelle
+                        lastRowsGlobal = data.newLastRows;
+
+                        // 5. Güncellenmiş veri ile tüm ekranı yeniden çiz
                         updateDisplay();
+                    } else if (data.newLastRows) {
+                        // Yeni satış olmasa bile, sunucudan gelen son satır bilgisini al
+                        lastRowsGlobal = data.newLastRows;
                     }
-                    
-                    lastRowsGlobal = data.newLastRows;
 
                 } catch (error) {
                     console.error("Yeni satışlar alınırken hata oluştu:", error.message);
@@ -374,18 +401,16 @@
                         <i class="fas fa-store text-yellow-400"></i>
                     </div>
                     <div class="flex-grow text-left">
-                        <span class="font-bold text-white">${branch}</span>
-                        <span class="text-gray-300 text-sm block">${formatValue(amount, 'totalCiro')} tutarında yeni bir satış yaptı!</span>
+                        <span class="font-bold text-white">${branch} - ${formatValue(amount, 'totalCiro')} Satış</span>
                     </div>`;
                 liveSalesFeed.prepend(saleItem);
                 
                 setTimeout(() => {
                     saleItem.classList.add('fade-out');
                     setTimeout(() => saleItem.remove(), 500);
-                }, 3600000); // 1 saat sonra kaldır
+                }, 3600000);
             }
             
-            // Olay Dinleyicileri
             soundToggleButton.onclick = () => {
                 isSoundOn = !isSoundOn;
                 soundToggleButton.querySelector('i').className = `fas ${isSoundOn ? 'fa-volume-up' : 'fa-volume-mute'}`;
