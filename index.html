@@ -421,7 +421,6 @@
                 <p id="totalCiroValue" class="text-4xl font-extrabold text-yellow-400 mt-2" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">0 TL</p>
             </div>
 
-            <div id="loadingIndicator" class="mt-4 text-gray-400 hidden">Veriler yükleniyor...</div>
             <div id="errorMessage" class="mt-4 text-red-500 hidden"></div>
             <div id="lastUpdated" class="mt-4 text-gray-400 text-sm"></div>
         </div>
@@ -450,7 +449,6 @@
             // DOM Elementleri
             const leaderboardBody = document.getElementById('leaderboardBody');
             const currentPeriodDisplay = document.getElementById('currentPeriodDisplay'); 
-            const loadingIndicator = document.getElementById('loadingIndicator');
             const errorMessage = document.getElementById('errorMessage');
             const lastUpdatedElement = document.getElementById('lastUpdated');
             const monthSelect = document.getElementById('monthSelect');
@@ -505,7 +503,15 @@
             };
             
             const createPlayerCardHTML = (rank, branchData, criteria) => {
-                if (!branchData) return ''; // Veri yoksa boş döndür
+                if (!branchData || branchData.branch === 'Yükleniyor...') {
+                    return `
+                        <div class="flex items-center justify-center h-full">
+                            <svg class="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>`;
+                }
                 const score = formatValue(branchData[criteria], criteria);
                 const crownHTML = rank === 1 ? `<img src="https://www.upload.ee/image/18258333/0_12e6cc_138b775d_orig.png" alt="Kral Tacı" class="crown-icon-top">` : '';
                 return `
@@ -519,50 +525,61 @@
 
             const updateDisplay = () => {
                 const sortCriteria = sortSelect.value;
-                
-                // Sıralama
                 const sortedData = [...allBranchDataGlobal].sort((a, b) => (b[sortCriteria] || 0) - (a[sortCriteria] || 0));
-
-                // Tablo başlığını güncelle
                 const headerOption = sortSelect.querySelector(`option[value="${sortCriteria}"]`);
                 tableHeaderValue.textContent = headerOption ? headerOption.textContent.replace('Sırala: ', '') : 'Değer';
-
-                // Top 3 Kartları güncelle
                 const [rank1Data, rank2Data, rank3Data] = sortedData;
                 document.getElementById('rank1Card').innerHTML = createPlayerCardHTML(1, rank1Data, sortCriteria);
                 document.getElementById('rank2Card').innerHTML = createPlayerCardHTML(2, rank2Data, sortCriteria);
                 document.getElementById('rank3Card').innerHTML = createPlayerCardHTML(3, rank3Data, sortCriteria);
-                
-                // Tıklama eventlerini yeniden ata
-                 document.querySelectorAll('.top-player-card').forEach(card => {
+                document.querySelectorAll('.top-player-card').forEach(card => {
                     card.addEventListener('click', (e) => {
-                        const rank = parseInt(e.currentTarget.querySelector('.rank-number-top').textContent);
+                        const rankNumberElement = e.currentTarget.querySelector('.rank-number-top');
+                        if (!rankNumberElement) return;
+                        const rank = parseInt(rankNumberElement.textContent);
                         const branchData = sortedData[rank - 1];
                         if (branchData) showBranchDetails(branchData);
                     });
                 });
-
-                // Tabloyu güncelle (ilk 3 hariç)
                 leaderboardBody.innerHTML = '';
-                sortedData.slice(3).forEach((item, index) => {
-                    const row = leaderboardBody.insertRow();
-                    row.dataset.branch = item.branch; // Tıklama için veri sakla
-                    
-                    const rankCell = row.insertCell(0);
-                    const branchCell = row.insertCell(1);
-                    const valueCell = row.insertCell(2);
-                    
-                    rankCell.textContent = index + 4;
-                    branchCell.textContent = item.branch;
-                    valueCell.textContent = formatValue(item[sortCriteria], sortCriteria);
-                    
-                    row.addEventListener('click', () => showBranchDetails(item));
-                });
-                
-                // Grafiği güncelle (Her zaman ciroya göre ama sıralama değişmiş halde)
+                if (sortedData.length === 0 && !errorMessage.textContent) {
+                    leaderboardBody.innerHTML = `<tr><td colspan="3" class="text-center py-6">Bu dönem için veri bulunamadı.</td></tr>`;
+                } else {
+                    sortedData.slice(3).forEach((item, index) => {
+                        const row = leaderboardBody.insertRow();
+                        row.dataset.branch = item.branch;
+                        row.insertCell(0).textContent = index + 4;
+                        row.insertCell(1).textContent = item.branch;
+                        row.insertCell(2).textContent = formatValue(item[sortCriteria], sortCriteria);
+                        row.addEventListener('click', () => showBranchDetails(item));
+                    });
+                }
                 renderChart(sortedData);
                 lastUpdatedElement.textContent = `Son Güncelleme: ${new Date().toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })}`;
             };
+            
+            const setLoadingState = () => {
+                 errorMessage.classList.add('hidden');
+                 errorMessage.textContent = '';
+                 leaderboardBody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="text-center py-8">
+                            <div class="flex justify-center items-center">
+                                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Veriler Yükleniyor...</span>
+                            </div>
+                        </td>
+                    </tr>`;
+                document.getElementById('rank1Card').innerHTML = createPlayerCardHTML(1, { branch: 'Yükleniyor...' }, 'totalCiro');
+                document.getElementById('rank2Card').innerHTML = createPlayerCardHTML(2, { branch: 'Yükleniyor...' }, 'totalCiro');
+                document.getElementById('rank3Card').innerHTML = createPlayerCardHTML(3, { branch: 'Yükleniyor...' }, 'totalCiro');
+                if (myChart) myChart.destroy();
+                totalCiroValueElement.textContent = 'Hesaplanıyor...';
+            };
+
 
             async function fetchLeaderboardData() {
                 const selectedMonth = parseInt(monthSelect.value);
@@ -573,9 +590,8 @@
                     errorMessage.classList.remove('hidden');
                     return;
                 }
-
-                loadingIndicator.classList.remove('hidden');
-                errorMessage.classList.add('hidden');
+                
+                setLoadingState();
                 currentPeriodDisplay.textContent = `Dönem: ${monthNames[selectedMonth]} ${selectedYear}`;
 
                 try {
@@ -586,16 +602,8 @@
                     if (!Array.isArray(data)) throw new Error('Beklenmeyen veri formatı.');
                     
                     allBranchDataGlobal = data;
-
-                    if (data.length === 0) {
-                        errorMessage.textContent = 'Bu dönem için veri bulunamadı.';
-                        errorMessage.classList.remove('hidden');
-                        allBranchDataGlobal = [];
-                    }
-                    
                     const totalCiro = allBranchDataGlobal.reduce((sum, item) => sum + (item.totalCiro || 0), 0);
                     totalCiroValueElement.textContent = formatValue(totalCiro, 'totalCiro');
-
                     updateDisplay();
 
                 } catch (error) {
@@ -603,9 +611,7 @@
                     errorMessage.textContent = `Veriler yüklenemedi: ${error.message}`;
                     errorMessage.classList.remove('hidden');
                     allBranchDataGlobal = [];
-                    updateDisplay();
-                } finally {
-                    loadingIndicator.classList.add('hidden');
+                    leaderboardBody.innerHTML = `<tr><td colspan="3" class="text-center py-6 text-red-400">${errorMessage.textContent}</td></tr>`;
                 }
             }
 
