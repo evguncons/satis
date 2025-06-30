@@ -447,6 +447,13 @@
                     <!-- Buraya JavaScript ile dinamik veriler yüklenecek -->
                 </tbody>
             </table>
+            
+            <!-- TOPLAM CİRO BÖLÜMÜ -->
+            <div id="totalCiroContainer" class="mt-8 pt-6 border-t border-gray-600 text-center">
+                <h3 class="text-xl font-bold uppercase tracking-wider text-white">Tüm Şubeler Toplam Ciro</h3>
+                <p id="totalCiroValue" class="text-4xl font-extrabold text-yellow-400 mt-2" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">0 TL</p>
+            </div>
+
             <div id="loadingIndicator" class="mt-4 text-gray-500 hidden">Veriler yükleniyor...</div>
             <div id="errorMessage" class="mt-4 text-red-600 hidden"></div>
             <div id="lastUpdated" class="mt-4 text-gray-400 text-sm"></div>
@@ -488,6 +495,7 @@
             const monthSelect = document.getElementById('monthSelect');
             const yearSelect = document.getElementById('yearSelect');
             const applyFilterButton = document.getElementById('applyFilter');
+            const totalCiroValueElement = document.getElementById('totalCiroValue');
 
             // Top 3 Kart Elemanları
             const rank1Card = document.getElementById('rank1Card');
@@ -573,21 +581,25 @@
                     if (data.length === 0) {
                         errorMessage.textContent = 'Liderlik tablosu için veri bulunamadı.';
                         errorMessage.classList.remove('hidden');
-                        // Veri yoksa top 3 kartlarını da sıfırla
                         updateTop3Cards([], lastUpdatedElement); 
+                        totalCiroValueElement.textContent = (0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
                         return;
                     }
 
-                    // Verileri 'totalCiro'ya göre azalan sırada sırala (Apps Script'ten sıralı geldiği varsayılıyor)
+                    // Verileri 'totalCiro'ya göre azalan sırada sırala
                     data.sort((a, b) => b.totalCiro - a.totalCiro); 
-                    allBranchDataGlobal = data; // Tüm detaylı veriyi global değişkene ata
+                    allBranchDataGlobal = data;
+
+                    // Toplam ciroyu hesapla ve göster
+                    const totalCiro = data.reduce((sum, item) => sum + (item.totalCiro || 0), 0);
+                    totalCiroValueElement.textContent = totalCiro.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
 
                     // Top 3 kartlarını güncelle
                     updateTop3Cards(data, lastUpdatedElement);
 
                     // Tabloya 4. sıradan itibaren şubeleri ekle
                     leaderboardBody.innerHTML = ''; 
-                    data.slice(3).forEach((item, index) => { // İlk 3'ü atla
+                    data.slice(3).forEach((item, index) => {
                         const row = leaderboardBody.insertRow();
                         const rankCell = row.insertCell(0);
                         const branchCell = row.insertCell(1);
@@ -610,6 +622,7 @@
                     errorMessage.textContent = `Veriler yüklenirken bir hata oluştu: ${error.message}. Lütfen Google Apps Script'inizin doğru çalıştığından ve erişilebilir olduğundan emin olun.`;
                     errorMessage.classList.remove('hidden');
                     updateTop3Cards([], lastUpdatedElement); 
+                    totalCiroValueElement.textContent = (0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
                 } finally {
                     loadingIndicator.classList.add('hidden');
                 }
@@ -627,18 +640,17 @@
                 // Kartlara veri ata
                 if (topBranches[0]) {
                     rank1Name.textContent = topBranches[0].branch;
-                    // Null veya undefined ise 0 kullan
-                    rank1Score.textContent = (topBranches[0].totalCiro !== undefined ? topBranches[0].totalCiro : 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+                    rank1Score.textContent = (topBranches[0].totalCiro || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
                     rank1Card.addEventListener('click', () => showBranchDetails(topBranches[0]));
                 }
                 if (topBranches[1]) {
                     rank2Name.textContent = topBranches[1].branch;
-                    rank2Score.textContent = (topBranches[1].totalCiro !== undefined ? topBranches[1].totalCiro : 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+                    rank2Score.textContent = (topBranches[1].totalCiro || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
                     rank2Card.addEventListener('click', () => showBranchDetails(topBranches[1]));
                 }
                 if (topBranches[2]) {
                     rank3Name.textContent = topBranches[2].branch;
-                    rank3Score.textContent = (topBranches[2].totalCiro !== undefined ? topBranches[2].totalCiro : 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+                    rank3Score.textContent = (topBranches[2].totalCiro || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
                     rank3Card.addEventListener('click', () => showBranchDetails(topBranches[2]));
                 }
 
@@ -681,9 +693,9 @@
                                 text: 'Şube Ciro Karşılaştırması',
                                 font: {
                                     size: 16,
-                                    color: '#ffffff' // Grafik başlık rengi
+                                    color: '#ffffff'
                                 },
-                                color: '#ffffff' // Chart.js 3+ için title color
+                                color: '#ffffff'
                             },
                             tooltip: {
                                 callbacks: {
@@ -692,36 +704,36 @@
                                         if (label) {
                                             label += ': ';
                                         }
-                                        label += (context.parsed.y !== undefined ? context.parsed.y : 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+                                        label += (context.parsed.y || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
                                         return label;
                                     }
                                 }
                             }
                         },
                         scales: {
-                            x: { // X ekseni etiketleri (şube adları)
+                            x: {
                                 ticks: {
-                                    color: '#e0e0e0' // X ekseni metin rengi
+                                    color: '#e0e0e0'
                                 },
                                 grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)' // Izgara rengi
+                                    color: 'rgba(255, 255, 255, 0.1)'
                                 }
                             },
-                            y: { // Y ekseni (ciro)
+                            y: {
                                 beginAtZero: true,
                                 title: {
                                     display: true,
                                     text: 'Ciro (TL)',
-                                    color: '#e0e0e0' // Y ekseni başlık rengi
+                                    color: '#e0e0e0'
                                 },
                                 ticks: {
-                                    color: '#e0e0e0', // Y ekseni metin rengi
+                                    color: '#e0e0e0',
                                     callback: function(value, index, values) {
-                                        return (value !== undefined ? value : 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+                                        return (value || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
                                     }
                                 },
                                 grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)' // Izgara rengi
+                                    color: 'rgba(255, 255, 255, 0.1)'
                                 }
                             }
                         }
@@ -731,16 +743,14 @@
 
             // Şube detay modalını gösterme fonksiyonu
             function showBranchDetails(branchData) {
-                // Her bir değer için undefined kontrolü ve varsayılan değer ataması
                 modalBranchName.textContent = branchData.branch || 'Bilinmiyor';
-                modalTotalCiro.textContent = (branchData.totalCiro !== undefined ? branchData.totalCiro : 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
-                // Bu değerler Apps Script tarafından dönmesi bekleniyor, ancak hata ayıklamak için güvenli hale getirildi.
-                modalSuccessfulSales.textContent = `${(branchData.successfulSalesCount !== undefined ? branchData.successfulSalesCount : 0)} Adet`;
-                modalTotalCalls.textContent = `${(branchData.totalCalls !== undefined ? branchData.totalCalls : 0)} Adet`;
-                modalSaleRate.textContent = `${(branchData.saleRate !== undefined ? branchData.saleRate : 0)}%`;
-                modalAverageCiro.textContent = (branchData.averageCiro !== undefined ? branchData.averageCiro : 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+                modalTotalCiro.textContent = (branchData.totalCiro || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
+                modalSuccessfulSales.textContent = `${(branchData.successfulSalesCount || 0)} Adet`;
+                modalTotalCalls.textContent = `${(branchData.totalCalls || 0)} Adet`;
+                modalSaleRate.textContent = `${(branchData.saleRate || 0)}%`;
+                modalAverageCiro.textContent = (branchData.averageCiro || 0).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
                 
-                branchDetailModal.style.display = 'flex'; // Modalı görünür yap
+                branchDetailModal.style.display = 'flex';
             }
 
             // Modal kapatma olayları
@@ -765,15 +775,14 @@
             // Sayfa yüklendiğinde liderlik tablosu verilerini çek
             fetchLeaderboardData(); 
 
-            // Otomatik canlı güncelleme: Her 20 dakikada bir veriyi tekrar çek
+            // Otomatik canlı güncelleme
             if (refreshInterval) clearInterval(refreshInterval); 
             refreshInterval = setInterval(() => {
                 const selectedMonth = parseInt(monthSelect.value);
                 const selectedYear = parseInt(yearSelect.value);
                 fetchLeaderboardData(selectedMonth, selectedYear);
-            }, 1200000); // 20 dakika = 1200000 milisaniye
+            }, 1200000); // 20 dakika
         });
     </script>
 </body>
 </html>
- 
