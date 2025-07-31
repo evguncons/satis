@@ -10,8 +10,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Font Awesome (Profil İkonları için) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Tone.js CDN (Ses Efektleri için) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #6a0dad 0%, #00008b 100%); min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #ffffff; }
         .main-content-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 800px; margin-top: 20px; background-color: rgba(0, 0, 0, 0.2); border-radius: 15px; padding: 20px; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3); }
@@ -49,8 +47,7 @@
         .modal-detail-item { margin-bottom: 12px; font-size: 1.1rem; color: #e0e0e0; }
         .modal-detail-item strong { color: #ffffff; font-weight: 600; }
         .chart-container { width: 100%; max-width: 700px; margin-top: 40px; padding: 20px; background-color: rgba(0, 0, 0, 0.4); border-radius: 12px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); color: #ffffff; }
-        .sales-feed-item { background-color: rgba(75, 0, 130, 0.6); border-left: 4px solid #facc15; animation: slideIn 0.5s ease-out forwards; }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+        
         @media (max-width: 768px) { .filter-controls { flex-direction: column; gap: 10px; width: 80%; margin: 0 auto; } .filter-controls select, .filter-controls button { width: 100%; } }
         @media (max-width: 640px) { body { padding: 10px; } .main-content-wrapper { margin-top: 0; padding: 10px; } .logo-img { max-width: 150px; } .leaderboard-title { font-size: 2rem; } .top-3-section { flex-direction: column; align-items: center; gap: 15px; } .top-player-card { width: 80%; transform: translateY(0) !important; } .top-player-card.rank-1 .crown-icon-top { top: -20px; width: 45px; height: 45px; } .leaderboard-table th, .leaderboard-table td { padding: 8px; font-size: 0.8rem; } .modal-content { padding: 15px; max-width: 95%; } .modal-title { font-size: 1.5rem; } }
     </style>
@@ -67,7 +64,6 @@
             <h1 class="leaderboard-title">LİDERLİK TABLOSU</h1>
             
             <div class="filter-controls flex justify-center items-center flex-wrap gap-4 mb-6">
-                <!-- Dropdown'lar dinamik olarak doldurulacak -->
                 <select id="periodSelect" class="p-2 border-gray-600 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"></select>
                 <select id="sortSelect" class="p-2 border-gray-600 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <option value="totalCiro" selected>Sırala: Toplam Ciro</option>
@@ -99,11 +95,6 @@
                 <tbody id="leaderboardBody"></tbody>
             </table>
             
-            <div id="liveSalesTracker" class="mt-10 w-full">
-                <h3 class="text-xl font-bold uppercase tracking-wider text-white text-center mb-4">Canlı Satış Akışı</h3>
-                <div id="liveSalesFeed" class="space-y-3"></div>
-            </div>
-
             <div id="totalCiroContainer" class="mt-8 pt-6 border-t border-gray-600 text-center">
                 <h3 class="text-xl font-bold uppercase tracking-wider text-white">Tüm Şubeler Toplam Ciro</h3>
                 <p id="totalCiroValue" class="text-4xl font-extrabold text-yellow-400 mt-2" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">0 TL</p>
@@ -127,14 +118,13 @@
     </div>
 
     <script>
-        let pollingInterval;
-        let myChart; 
-        let allBranchDataGlobal = [];
-        let lastRowsGlobal = {};
-        
-        const GOOGLE_APPS_SCRIPT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwHjG2pWCFT3nZm2jfl1shZ5E6VV0wwoWiogJN-UH73iLDJ8iHpkQgM5jDR275anBnuEA/exec'; 
-
         document.addEventListener('DOMContentLoaded', () => {
+            let myChart; 
+            let allBranchDataGlobal = [];
+            let autoRefreshInterval;
+
+            const GOOGLE_APPS_SCRIPT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwHjG2pWCFT3nZm2jfl1shZ5E6VV0wwoWiogJN-UH73iLDJ8iHpkQgM5jDR275anBnuEA/exec'; 
+
             const leaderboardBody = document.getElementById('leaderboardBody');
             const currentPeriodDisplay = document.getElementById('currentPeriodDisplay'); 
             const errorMessage = document.getElementById('errorMessage');
@@ -144,12 +134,16 @@
             const applyFilterButton = document.getElementById('applyFilter');
             const totalCiroValueElement = document.getElementById('totalCiroValue');
             const tableHeaderValue = document.getElementById('tableHeaderValue');
-            const liveSalesFeed = document.getElementById('liveSalesFeed');
             const modalBranchName = document.getElementById('modalBranchName');
             const modalDetails = document.getElementById('modalDetails');
             const closeButton = document.querySelector('.close-button');
 
-            const synth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 } }).toDestination();
+            const startAutoRefresh = () => {
+                if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+                autoRefreshInterval = setInterval(() => {
+                    fetchLeaderboardData(true); // Arka planda sessiz yenileme yap
+                }, 30000); // 30 saniye
+            };
 
             const formatValue = (value, criteria) => {
                 value = value === undefined || value === null ? 0 : value;
@@ -164,7 +158,6 @@
 
             const createPlayerCardHTML = (rank, branchData, criteria) => {
                 if (!branchData || branchData.branch === 'Yükleniyor...') {
-                    // Yükleniyor durumunda sadece spinner göster
                     return `<div class="flex items-center justify-center h-full"><svg class="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>`;
                 }
                 const score = formatValue(branchData[criteria], criteria);
@@ -179,22 +172,17 @@
                 const headerOption = sortSelect.querySelector(`option[value="${sortCriteria}"]`);
                 tableHeaderValue.textContent = headerOption ? headerOption.textContent.replace('Sırala: ', '') : 'Değer';
                 
-                const [rank1Data, rank2Data, rank3Data] = sortedData;
+                const rank1Data = sortedData[0] || null;
+                const rank2Data = sortedData[1] || null;
+                const rank3Data = sortedData[2] || null;
+
                 document.getElementById('rank1Card').innerHTML = createPlayerCardHTML(1, rank1Data, sortCriteria);
                 document.getElementById('rank2Card').innerHTML = createPlayerCardHTML(2, rank2Data, sortCriteria);
                 document.getElementById('rank3Card').innerHTML = createPlayerCardHTML(3, rank3Data, sortCriteria);
                 
-                // İlk 3 kart için onclick olayını ata (index'e göre doğru veriyi bul)
-                document.querySelectorAll('.top-player-card').forEach(card => {
-                    card.onclick = (e) => {
-                        // Kartın rank numarasını alarak doğru veriyi bul
-                        const rankClass = Array.from(e.currentTarget.classList).find(c => c.startsWith('rank-'));
-                        if (!rankClass) return;
-                        const rank = parseInt(rankClass.replace('rank-', ''));
-                        const branchData = sortedData[rank - 1];
-                        if (branchData) showBranchDetails(branchData);
-                    };
-                });
+                if (rank1Data) document.getElementById('rank1Card').onclick = () => showBranchDetails(rank1Data);
+                if (rank2Data) document.getElementById('rank2Card').onclick = () => showBranchDetails(rank2Data);
+                if (rank3Data) document.getElementById('rank3Card').onclick = () => showBranchDetails(rank3Data);
                 
                 leaderboardBody.innerHTML = '';
                 if (sortedData.length === 0 && !errorMessage.textContent) {
@@ -216,86 +204,69 @@
             const setLoadingState = (message = "Veriler Yükleniyor...") => {
                  errorMessage.classList.add('hidden');
                  errorMessage.textContent = '';
-                 
-                 // Ana tablo için yükleniyor göstergesi
                  leaderboardBody.innerHTML = `<tr><td colspan="3" class="text-center py-8"><div class="flex justify-center items-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>${message}</span></div></td></tr>`;
-                
-                 // GÜNCELLEME: Top 3 kartları için yükleniyor göstergesi
                  document.getElementById('rank1Card').innerHTML = createPlayerCardHTML(1, { branch: 'Yükleniyor...' });
                  document.getElementById('rank2Card').innerHTML = createPlayerCardHTML(2, { branch: 'Yükleniyor...' });
                  document.getElementById('rank3Card').innerHTML = createPlayerCardHTML(3, { branch: 'Yükleniyor...' });
-
-                 // Grafiği temizle
-                 if (myChart) {
-                     myChart.destroy();
-                 }
-
-                 // Toplam ciro için yükleniyor göstergesi
+                 if (myChart) myChart.destroy();
                  totalCiroValueElement.textContent = 'Hesaplanıyor...';
             };
 
             async function fetchAvailablePeriods() {
-                setLoadingState("Dönemler yükleniyor...");
                 try {
-                    const response = await fetch(`${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getAvailablePeriods`);
+                    const response = await fetch(`${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getAvailablePeriods&t=${new Date().getTime()}`);
+                    if (!response.ok) throw new Error(`Sunucu hatası: ${response.status}`);
                     const periods = await response.json();
                     if (periods.error) throw new Error(periods.error);
                     
+                    const currentSelected = periodSelect.value;
                     periodSelect.innerHTML = '';
                     
                     const monthOrder = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
                     periods.sort((a, b) => {
                         const [monthA, yearA] = a.split(' ');
                         const [monthB, yearB] = b.split(' ');
-                        if (parseInt(yearA) !== parseInt(yearB)) {
-                            return parseInt(yearB) - parseInt(yearA);
-                        }
+                        if (parseInt(yearA) !== parseInt(yearB)) return parseInt(yearB) - parseInt(yearA);
                         return monthOrder.indexOf(monthB) - monthOrder.indexOf(monthA);
-                    }).forEach(period => {
-                        const option = new Option(period, period);
-                        periodSelect.add(option);
-                    });
+                    }).forEach(period => periodSelect.add(new Option(period, period)));
                     
-                    // İçinde bulunulan ayı otomatik seç
-                    const now = new Date();
-                    const currentMonthName = monthOrder[now.getMonth()];
-                    const currentYear = now.getFullYear();
-                    const currentPeriodName = `${currentMonthName} ${currentYear}`;
-                    
-                    if ([...periodSelect.options].some(opt => opt.value === currentPeriodName)) {
-                        periodSelect.value = currentPeriodName;
+                    if ([...periodSelect.options].some(opt => opt.value === currentSelected)) {
+                        periodSelect.value = currentSelected;
                     }
 
-                    // Dönemler yüklendikten sonra ilk dönemin verilerini getir
-                    await fetchLeaderboardData();
-
                 } catch (error) {
-                    errorMessage.textContent = `Dönemler yüklenemedi: ${error.message}`;
-                    errorMessage.classList.remove('hidden');
+                    console.error(`Dönemler yüklenemedi: ${error.message}`);
                 }
             }
 
-            async function fetchLeaderboardData() {
+            async function fetchLeaderboardData(isSilentRefresh = false) {
                 const selectedPeriod = periodSelect.value;
                 if (!selectedPeriod) {
                     errorMessage.textContent = "Lütfen bir dönem seçin.";
                     errorMessage.classList.remove('hidden');
                     return;
                 }
-                setLoadingState(`'${selectedPeriod}' verileri yükleniyor...`);
+                if (!isSilentRefresh) {
+                   setLoadingState(`'${selectedPeriod}' verileri yükleniyor...`);
+                }
                 currentPeriodDisplay.textContent = `Dönem: ${selectedPeriod}`;
                 try {
-                    const response = await fetch(`${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getLeaderboard&sheetName=${encodeURIComponent(selectedPeriod)}`);
+                    const url = `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getLeaderboard&sheetName=${encodeURIComponent(selectedPeriod)}&t=${new Date().getTime()}`;
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`Sunucu hatası: ${response.status}`);
                     const data = await response.json();
                     if(data.error) throw new Error(data.error);
 
                     allBranchDataGlobal = data.leaderboard;
-                    lastRowsGlobal = data.lastRows;
-
+                    
                     const totalCiro = allBranchDataGlobal.reduce((sum, item) => sum + (item.totalCiro || 0), 0);
                     totalCiroValueElement.textContent = formatValue(totalCiro, 'totalCiro');
                     updateDisplay();
-                    startLiveSalesPolling();
+                    
+                    // Sadece manuel yüklemelerde veya ilk yüklemede zamanlayıcıyı başlat/sıfırla
+                    if (!isSilentRefresh) {
+                        startAutoRefresh();
+                    }
 
                 } catch (error) {
                     errorMessage.textContent = `Veriler yüklenemedi: ${error.message}`;
@@ -303,45 +274,6 @@
                 }
             }
             
-            async function pollForNewSales() {
-                const selectedPeriod = periodSelect.value;
-                if (!selectedPeriod) return;
-
-                try {
-                    const url = `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getLatestSales&sheetName=${encodeURIComponent(selectedPeriod)}&lastRows=${encodeURIComponent(JSON.stringify(lastRowsGlobal))}`;
-                    const response = await fetch(url);
-                    const data = await response.json();
-                    if (data.error) throw new Error(data.error);
-
-                    if (data.newSales && data.newSales.length > 0) {
-                        data.newSales.forEach(sale => {
-                            addLiveSale(sale.branch, sale.amount);
-                            const branchToUpdate = allBranchDataGlobal.find(b => b.branch === sale.branch);
-                            if(branchToUpdate) {
-                                branchToUpdate.totalCiro += sale.amount;
-                                branchToUpdate.successfulSalesCount += 1; // Başarı sayısını da artırabiliriz
-                            } else {
-                                allBranchDataGlobal.push({ branch: sale.branch, totalCiro: sale.amount, successfulSalesCount: 1, totalCalls: 0, saleRate: 0, averageCiro: 0 });
-                            }
-                        });
-
-                        const totalCiro = allBranchDataGlobal.reduce((sum, item) => sum + (item.totalCiro || 0), 0);
-                        totalCiroValueElement.textContent = formatValue(totalCiro, 'totalCiro');
-                        updateDisplay();
-                    }
-                    
-                    lastRowsGlobal = data.newLastRows;
-
-                } catch (error) {
-                    console.error("Yeni satışlar alınırken hata oluştu:", error);
-                }
-            }
-
-            function startLiveSalesPolling() {
-                if(pollingInterval) clearInterval(pollingInterval);
-                pollingInterval = setInterval(pollForNewSales, 10000); // 10 saniyede bir kontrol
-            }
-
             function renderChart(data) {
                 const ctx = document.getElementById('salesChart').getContext('2d');
                 if (myChart) myChart.destroy();
@@ -355,7 +287,7 @@
             }
 
             function showBranchDetails(branchData) {
-                 modalBranchName.textContent = branchData.branch || 'Bilinmiyor';
+                modalBranchName.textContent = branchData.branch || 'Bilinmiyor';
                 modalDetails.innerHTML = `
                     <p class="modal-detail-item"><strong>Toplam Ciro:</strong> <span>${formatValue(branchData.totalCiro, 'totalCiro')}</span></p>
                     <p class="modal-detail-item"><strong>Başarılı Satış Sayısı:</strong> <span>${formatValue(branchData.successfulSalesCount, 'successfulSalesCount')}</span></p>
@@ -365,25 +297,28 @@
                 `;
                 document.getElementById('branchDetailModal').style.display = 'flex';
             }
-
-            function addLiveSale(branch, amount) {
-                synth.triggerAttackRelease("G5", "16n", Tone.now());
-                const saleItem = document.createElement('div');
-                saleItem.className = 'sales-feed-item p-3 rounded-lg flex justify-between items-center';
-                saleItem.innerHTML = `<div><span class="font-bold text-yellow-400">${branch}</span><span class="text-gray-300"> yeni bir satış yaptı!</span></div><div class="font-semibold text-white">${formatValue(amount, 'totalCiro')}</div>`;
-                liveSalesFeed.prepend(saleItem);
-                if (liveSalesFeed.children.length > 5) {
-                    liveSalesFeed.lastChild.remove();
-                }
-            }
             
             // Olay Dinleyicileri
             closeButton.onclick = () => document.getElementById('branchDetailModal').style.display = 'none';
             window.onclick = (event) => { if (event.target == document.getElementById('branchDetailModal')) document.getElementById('branchDetailModal').style.display = 'none'; };
-            applyFilterButton.onclick = () => { if (Tone.context.state !== 'running') Tone.start(); fetchLeaderboardData(); };
+            applyFilterButton.onclick = () => fetchLeaderboardData();
             sortSelect.onchange = () => { if (allBranchDataGlobal.length > 0) updateDisplay(); };
 
-            // Başlangıç
+            // --- HIZLI İLK YÜKLEME MANTIĞI ---
+            const monthOrder = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
+            const now = new Date();
+            const currentMonthName = monthOrder[now.getMonth()];
+            const currentYear = now.getFullYear();
+            const currentPeriodName = `${currentMonthName} ${currentYear}`;
+            
+            // Seçim kutusuna geçici olarak mevcut dönemi ekle
+            periodSelect.innerHTML = `<option value="${currentPeriodName}">${currentPeriodName}</option>`;
+            periodSelect.value = currentPeriodName;
+
+            // Mevcut ayın verilerini hemen getir
+            fetchLeaderboardData(); 
+            
+            // Diğer tüm dönemleri arka planda getir ve seçim kutusunu doldur
             fetchAvailablePeriods();
         });
     </script>
