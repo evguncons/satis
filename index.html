@@ -13,11 +13,11 @@
     <style>
         body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #6a0dad 0%, #00008b 100%); min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #ffffff; }
         .main-content-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 800px; margin-top: 20px; background-color: rgba(0, 0, 0, 0.2); border-radius: 15px; padding: 20px; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3); }
-        .leaderboard-container { background-color: rgba(0, 0, 0, 0.4); padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); width: 100%; text-align: center; color: #ffffff; }
-        .leaderboard-title { color: #ffffff; margin-bottom: 15px; font-size: 2.5rem; font-weight: 800; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
-        .leaderboard-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 20px; }
-        .leaderboard-table th, .leaderboard-table td { padding: 12px; text-align: left; border-radius: 8px; color: #ffffff; background-color: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); }
-        .leaderboard-table th { background-color: rgba(255, 255, 255, 0.2); font-weight: 700; text-transform: uppercase; font-size: 0.85rem; }
+        .leaderboard-container, .top-products-container { background-color: rgba(0, 0, 0, 0.4); padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); width: 100%; text-align: center; color: #ffffff; margin-top: 20px; }
+        .leaderboard-title, .section-title { color: #ffffff; margin-bottom: 15px; font-size: 2.5rem; font-weight: 800; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .leaderboard-table, .products-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 20px; }
+        .leaderboard-table th, .leaderboard-table td, .products-table th, .products-table td { padding: 12px; text-align: left; border-radius: 8px; color: #ffffff; background-color: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .leaderboard-table th, .products-table th { background-color: rgba(255, 255, 255, 0.2); font-weight: 700; text-transform: uppercase; font-size: 0.85rem; }
         .leaderboard-table tbody tr { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.2s; cursor: pointer; }
         .leaderboard-table tbody tr:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); background-color: rgba(255, 255, 255, 0.15); }
         .leaderboard-table td:first-child { font-weight: 700; text-align: center; width: 50px; }
@@ -49,7 +49,7 @@
         .chart-container { width: 100%; max-width: 700px; margin-top: 40px; padding: 20px; background-color: rgba(0, 0, 0, 0.4); border-radius: 12px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); color: #ffffff; }
         
         @media (max-width: 768px) { .filter-controls { flex-direction: column; gap: 10px; width: 80%; margin: 0 auto; } .filter-controls select, .filter-controls button { width: 100%; } }
-        @media (max-width: 640px) { body { padding: 10px; } .main-content-wrapper { margin-top: 0; padding: 10px; } .logo-img { max-width: 150px; } .leaderboard-title { font-size: 2rem; } .top-3-section { flex-direction: column; align-items: center; gap: 15px; } .top-player-card { width: 80%; transform: translateY(0) !important; } .top-player-card.rank-1 .crown-icon-top { top: -20px; width: 45px; height: 45px; } .leaderboard-table th, .leaderboard-table td { padding: 8px; font-size: 0.8rem; } .modal-content { padding: 15px; max-width: 95%; } .modal-title { font-size: 1.5rem; } }
+        @media (max-width: 640px) { body { padding: 10px; } .main-content-wrapper { margin-top: 0; padding: 10px; } .logo-img { max-width: 150px; } .leaderboard-title, .section-title { font-size: 2rem; } .top-3-section { flex-direction: column; align-items: center; gap: 15px; } .top-player-card { width: 80%; transform: translateY(0) !important; } .top-player-card.rank-1 .crown-icon-top { top: -20px; width: 45px; height: 45px; } .leaderboard-table th, .leaderboard-table td, .products-table th, .products-table td { padding: 8px; font-size: 0.8rem; } .modal-content { padding: 15px; max-width: 95%; } .modal-title { font-size: 1.5rem; } }
     </style>
 </head>
 <body>
@@ -107,6 +107,27 @@
         <div class="chart-container">
             <canvas id="salesChart"></canvas>
         </div>
+
+        <!-- Yeni En Çok Satan Ürünler Bölümü -->
+        <div class="top-products-container">
+            <h2 class="section-title">BU AYIN EN ÇOK SATAN ÜRÜNLERİ</h2>
+            <table class="products-table">
+                <thead>
+                    <tr>
+                        <th>Sıra</th>
+                        <th>Kategori</th>
+                        <th>Ürün Adı</th>
+                        <th>Satış Adedi</th>
+                    </tr>
+                </thead>
+                <tbody id="topProductsBody">
+                    <!-- Ürün verileri buraya yüklenecek -->
+                </tbody>
+            </table>
+            <div id="productErrorMessage" class="mt-4 text-red-500 hidden"></div>
+        </div>
+        <!-- Yeni En Çok Satan Ürünler Bölümü Sonu -->
+
     </div>
 
     <div id="branchDetailModal" class="modal">
@@ -123,8 +144,10 @@
             let allBranchDataGlobal = [];
             let autoRefreshInterval;
 
+            // Google Apps Script Web Uygulaması URL'si
             const GOOGLE_APPS_SCRIPT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwHjG2pWCFT3nZm2jfl1shZ5E6VV0wwoWiogJN-UH73iLDJ8iHpkQgM5jDR275anBnuEA/exec'; 
 
+            // DOM Elementleri
             const leaderboardBody = document.getElementById('leaderboardBody');
             const currentPeriodDisplay = document.getElementById('currentPeriodDisplay'); 
             const errorMessage = document.getElementById('errorMessage');
@@ -137,25 +160,31 @@
             const modalBranchName = document.getElementById('modalBranchName');
             const modalDetails = document.getElementById('modalDetails');
             const closeButton = document.querySelector('.close-button');
+            const topProductsBody = document.getElementById('topProductsBody'); // Yeni: En çok satan ürünler tablosu
+            const productErrorMessage = document.getElementById('productErrorMessage'); // Yeni: Ürün hata mesajı
 
+            // Otomatik yenilemeyi başlatan fonksiyon
             const startAutoRefresh = () => {
                 if (autoRefreshInterval) clearInterval(autoRefreshInterval);
                 autoRefreshInterval = setInterval(() => {
                     fetchLeaderboardData(true); // Arka planda sessiz yenileme yap
+                    fetchTopSellingProducts(true); // Yeni: Ürünleri de sessiz yenile
                 }, 30000); // 30 saniye
             };
 
+            // Değerleri formatlayan yardımcı fonksiyon
             const formatValue = (value, criteria) => {
                 value = value === undefined || value === null ? 0 : value;
                 switch (criteria) {
                     case 'totalCiro': return value.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
-                    case 'successfulSalesCount': case 'totalCalls': return `${value} Adet`;
+                    case 'successfulSalesCount': case 'totalCalls': case 'salesCount': return `${value} Adet`; // 'salesCount' eklendi
                     case 'saleRate': return `%${parseFloat(value).toFixed(2)}`;
                     case 'averageCiro': return value.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' });
                     default: return value;
                 }
             };
 
+            // En iyi 3 oyuncu kartı HTML'ini oluşturan fonksiyon
             const createPlayerCardHTML = (rank, branchData, criteria) => {
                 if (!branchData || branchData.branch === 'Yükleniyor...') {
                     return `<div class="flex items-center justify-center h-full"><svg class="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>`;
@@ -165,6 +194,7 @@
                 return `${crownHTML}<span class="rank-number-top">${rank}</span><i class="fas fa-user-circle profile-icon"></i><div class="player-name">${branchData.branch}</div><div class="player-score">${score}</div>`;
             };
 
+            // Liderlik tablosu ve en iyi 3 kartı güncelleyen fonksiyon
             const updateDisplay = () => {
                 const sortCriteria = sortSelect.value;
                 const sortedData = [...allBranchDataGlobal].sort((a, b) => (b[sortCriteria] || 0) - (a[sortCriteria] || 0));
@@ -201,6 +231,7 @@
                 lastUpdatedElement.textContent = `Son Güncelleme: ${new Date().toLocaleString('tr-TR')}`;
             };
             
+            // Yükleme durumu gösteren fonksiyon
             const setLoadingState = (message = "Veriler Yükleniyor...") => {
                  errorMessage.classList.add('hidden');
                  errorMessage.textContent = '';
@@ -210,8 +241,14 @@
                  document.getElementById('rank3Card').innerHTML = createPlayerCardHTML(3, { branch: 'Yükleniyor...' });
                  if (myChart) myChart.destroy();
                  totalCiroValueElement.textContent = 'Hesaplanıyor...';
+
+                 // Yeni: Ürünler bölümü için yükleme durumu
+                 productErrorMessage.classList.add('hidden');
+                 productErrorMessage.textContent = '';
+                 topProductsBody.innerHTML = `<tr><td colspan="4" class="text-center py-8"><div class="flex justify-center items-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>Ürün verileri yükleniyor...</span></div></td></tr>`;
             };
 
+            // Mevcut dönemleri Google Apps Script'ten çeken fonksiyon
             async function fetchAvailablePeriods() {
                 try {
                     const response = await fetch(`${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getAvailablePeriods&t=${new Date().getTime()}`);
@@ -239,6 +276,7 @@
                 }
             }
 
+            // Liderlik tablosu verilerini Google Apps Script'ten çeken fonksiyon
             async function fetchLeaderboardData(isSilentRefresh = false) {
                 const selectedPeriod = periodSelect.value;
                 if (!selectedPeriod) {
@@ -273,7 +311,53 @@
                     errorMessage.classList.remove('hidden');
                 }
             }
+
+            // Yeni: En çok satan ürünler verilerini Google Apps Script'ten çeken fonksiyon
+            async function fetchTopSellingProducts(isSilentRefresh = false) {
+                const selectedPeriod = periodSelect.value;
+                if (!selectedPeriod) {
+                    productErrorMessage.textContent = "Lütfen bir dönem seçin.";
+                    productErrorMessage.classList.remove('hidden');
+                    return;
+                }
+                if (!isSilentRefresh) {
+                    // setLoadingState zaten çağrıldığı için burada sadece ürün bölümünü temizleyebiliriz
+                    topProductsBody.innerHTML = `<tr><td colspan="4" class="text-center py-8"><div class="flex justify-center items-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>Ürün verileri yükleniyor...</span></div></td></tr>`;
+                }
+                productErrorMessage.classList.add('hidden'); // Hata mesajını gizle
+                productErrorMessage.textContent = ''; // Hata mesajını temizle
+
+                try {
+                    // Google Apps Script'te 'getTopSellingProducts' adında yeni bir fonksiyonunuz olduğunu varsayıyoruz.
+                    const url = `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getTopSellingProducts&sheetName=${encodeURIComponent(selectedPeriod)}&t=${new Date().getTime()}`;
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`Sunucu hatası: ${response.status}`);
+                    const data = await response.json();
+                    if(data.error) throw new Error(data.error);
+
+                    const topProducts = data.topProducts || []; // API'den gelen ürün listesi
+                    
+                    topProductsBody.innerHTML = ''; // Mevcut içeriği temizle
+                    if (topProducts.length === 0) {
+                        topProductsBody.innerHTML = `<tr><td colspan="4" class="text-center py-6">Bu dönem için en çok satan ürün verisi bulunamadı.</td></tr>`;
+                    } else {
+                        topProducts.forEach((product, index) => {
+                            const row = topProductsBody.insertRow();
+                            row.insertCell(0).textContent = index + 1;
+                            row.insertCell(1).textContent = product.category || 'Bilinmiyor';
+                            row.insertCell(2).textContent = product.productName || 'Bilinmiyor';
+                            row.insertCell(3).textContent = formatValue(product.salesCount, 'salesCount');
+                        });
+                    }
+
+                } catch (error) {
+                    productErrorMessage.textContent = `Ürün verileri yüklenemedi: ${error.message}`;
+                    productErrorMessage.classList.remove('hidden');
+                    topProductsBody.innerHTML = `<tr><td colspan="4" class="text-center py-6">Ürün verileri yüklenirken bir hata oluştu.</td></tr>`;
+                }
+            }
             
+            // Çubuk grafiği oluşturan/güncelleyen fonksiyon
             function renderChart(data) {
                 const ctx = document.getElementById('salesChart').getContext('2d');
                 if (myChart) myChart.destroy();
@@ -286,6 +370,7 @@
                 });
             }
 
+            // Şube detay modalını gösteren fonksiyon
             function showBranchDetails(branchData) {
                 modalBranchName.textContent = branchData.branch || 'Bilinmiyor';
                 modalDetails.innerHTML = `
@@ -301,7 +386,10 @@
             // Olay Dinleyicileri
             closeButton.onclick = () => document.getElementById('branchDetailModal').style.display = 'none';
             window.onclick = (event) => { if (event.target == document.getElementById('branchDetailModal')) document.getElementById('branchDetailModal').style.display = 'none'; };
-            applyFilterButton.onclick = () => fetchLeaderboardData();
+            applyFilterButton.onclick = () => {
+                fetchLeaderboardData();
+                fetchTopSellingProducts(); // Yeni: Filtre uygulandığında ürünleri de getir
+            };
             sortSelect.onchange = () => { if (allBranchDataGlobal.length > 0) updateDisplay(); };
 
             // --- HIZLI İLK YÜKLEME MANTIĞI ---
@@ -317,6 +405,7 @@
 
             // Mevcut ayın verilerini hemen getir
             fetchLeaderboardData(); 
+            fetchTopSellingProducts(); // Yeni: İlk yüklemede en çok satan ürünleri de getir
             
             // Diğer tüm dönemleri arka planda getir ve seçim kutusunu doldur
             fetchAvailablePeriods();
