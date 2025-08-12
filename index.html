@@ -302,14 +302,7 @@
             closeButton.onclick = () => document.getElementById('branchDetailModal').style.display = 'none';
             window.onclick = (event) => { if (event.target == document.getElementById('branchDetailModal')) document.getElementById('branchDetailModal').style.display = 'none'; };
             applyFilterButton.onclick = () => fetchLeaderboardData();
-            sortSelect.onchange = () => { if (allBranchDataGlobal.length > 0) updateDisplay(); };
-
-            // --- HIZLI İLK YÜKLEME MANTIĞI ---
-            const monthOrder = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
-            const now = new Date();
-            const currentMonthName = monthOrder[now.getMonth()];
-            const currentYear = now.getFullYear();
-            const currentPeriodName = `${currentMonthName} ${currentYear}`;
+            sortSelect.onchange = () => { if (allBranchDataGlobal.length > 0) 
             
             // Seçim kutusuna geçici olarak mevcut dönemi ekle
             periodSelect.innerHTML = `<option value="${currentPeriodName}">${currentPeriodName}</option>`;
