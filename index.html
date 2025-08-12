@@ -212,7 +212,32 @@
                  totalCiroValueElement.textContent = 'Hesaplanıyor...';
             };
 
-         
+            async function fetchAvailablePeriods() {
+                try {
+                    const response = await fetch(`${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getAvailablePeriods&t=${new Date().getTime()}`);
+                    if (!response.ok) throw new Error(`Sunucu hatası: ${response.status}`);
+                    const periods = await response.json();
+                    if (periods.error) throw new Error(periods.error);
+                    
+                    const currentSelected = periodSelect.value;
+                    periodSelect.innerHTML = '';
+                    
+                    const monthOrder = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
+                    periods.sort((a, b) => {
+                        const [monthA, yearA] = a.split(' ');
+                        const [monthB, yearB] = b.split(' ');
+                        if (parseInt(yearA) !== parseInt(yearB)) return parseInt(yearB) - parseInt(yearA);
+                        return monthOrder.indexOf(monthB) - monthOrder.indexOf(monthA);
+                    }).forEach(period => periodSelect.add(new Option(period, period)));
+                    
+                    if ([...periodSelect.options].some(opt => opt.value === currentSelected)) {
+                        periodSelect.value = currentSelected;
+                    }
+
+                } catch (error) {
+                    console.error(`Dönemler yüklenemedi: ${error.message}`);
+                }
+            }
 
             async function fetchLeaderboardData(isSilentRefresh = false) {
                 const selectedPeriod = periodSelect.value;
@@ -249,17 +274,7 @@
                 }
             }
             
-            function renderChart(data) {
-                const ctx = document.getElementById('salesChart').getContext('2d');
-                if (myChart) myChart.destroy();
-                myChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: { labels: data.map(item => item.branch), datasets: [{ label: 'Toplam Ciro', data: data.map(item => item.totalCiro || 0), backgroundColor: 'rgba(138, 43, 226, 0.7)', borderColor: 'rgba(138, 43, 226, 1)', borderWidth: 1 }] },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Şube Ciro Karşılaştırması', font: { size: 16 }, color: '#ffffff' }, tooltip: { callbacks: { label: (context) => formatValue(context.parsed.y, 'totalCiro') } } },
-                        scales: { x: { ticks: { color: '#e0e0e0' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } }, y: { beginAtZero: true, title: { display: true, text: 'Ciro (TL)', color: '#e0e0e0' }, ticks: { color: '#e0e0e0', callback: (value) => formatValue(value, 'totalCiro') }, grid: { color: 'rgba(255, 255, 255, 0.1)' } } }
-                    }
-                });
-            }
+      
 
             function showBranchDetails(branchData) {
                 modalBranchName.textContent = branchData.branch || 'Bilinmiyor';
