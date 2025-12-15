@@ -347,6 +347,22 @@
                 <p id="totalCiroValue" class="text-4xl font-extrabold text-yellow-500 mt-2" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.2);">0 TL</p>
             </div>
 
+            <!-- YENİ EKLENEN BÖLÜM: GENEL PERFORMANS ÖZETİ -->
+            <div class="stats-grid mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-gray-700 pt-6">
+                <div class="stat-item text-center bg-white bg-opacity-5 p-4 rounded-lg">
+                     <h4 class="text-gray-400 text-xs font-bold uppercase tracking-wide mb-1">Toplam Aranan</h4>
+                     <p id="globalTotalCalls" class="text-2xl font-bold text-white">0</p>
+                </div>
+                <div class="stat-item text-center bg-white bg-opacity-5 p-4 rounded-lg">
+                     <h4 class="text-gray-400 text-xs font-bold uppercase tracking-wide mb-1">Toplam Satış</h4>
+                     <p id="globalTotalSales" class="text-2xl font-bold text-green-400">0</p>
+                </div>
+                <div class="stat-item text-center bg-white bg-opacity-5 p-4 rounded-lg">
+                     <h4 class="text-gray-400 text-xs font-bold uppercase tracking-wide mb-1">Genel Dönüşüm</h4>
+                     <p id="globalSaleRate" class="text-2xl font-bold text-blue-400">%0</p>
+                </div>
+            </div>
+
             <div id="errorMessage" class="mt-4 text-red-500 hidden"></div>
             <div id="lastUpdated" class="mt-4 text-gray-500 text-sm"></div>
         </div>
@@ -386,7 +402,13 @@
             const periodSelect = document.getElementById('periodSelect');
             const sortSelect = document.getElementById('sortSelect');
             const applyFilterButton = document.getElementById('applyFilter');
+            
+            // Eleman referansları
             const totalCiroValueElement = document.getElementById('totalCiroValue');
+            const globalTotalCallsElement = document.getElementById('globalTotalCalls');
+            const globalTotalSalesElement = document.getElementById('globalTotalSales');
+            const globalSaleRateElement = document.getElementById('globalSaleRate');
+            
             const tableHeaderValue = document.getElementById('tableHeaderValue');
             const modalBranchName = document.getElementById('modalBranchName');
             const modalDetails = document.getElementById('modalDetails');
@@ -464,8 +486,22 @@
                     });
                 }
                 
+                // TOPLAMLAR HESAPLAMA VE GÜNCELLEME
                 const totalCiro = allBranchDataGlobal.reduce((sum, item) => sum + (item.totalCiro || 0), 0);
+                const totalCalls = allBranchDataGlobal.reduce((sum, item) => sum + (item.totalCalls || 0), 0);
+                const totalSales = allBranchDataGlobal.reduce((sum, item) => sum + (item.successfulSalesCount || 0), 0);
+                
+                // Genel satış oranı hesaplama (Sıfıra bölme hatasını önle)
+                let globalSaleRate = 0;
+                if (totalCalls > 0) {
+                    globalSaleRate = (totalSales / totalCalls) * 100;
+                }
+
+                // UI Güncelleme
                 totalCiroValueElement.textContent = formatValue(totalCiro, 'totalCiro');
+                globalTotalCallsElement.textContent = `${totalCalls}`; // "Adet" metnini isterseniz kaldırabilirsiniz, yer darlığından sadece sayı.
+                globalTotalSalesElement.textContent = `${totalSales}`;
+                globalSaleRateElement.textContent = `%${globalSaleRate.toFixed(2)}`;
                 
                 renderChart(sortedData, chartSelect.value);
                 lastUpdatedElement.textContent = `Son Güncelleme: ${new Date().toLocaleString('tr-TR')}`;
@@ -480,6 +516,9 @@
                  document.getElementById('rank3Card').innerHTML = createPlayerCardHTML(3, { branch: 'Yükleniyor...' });
                  if (myChart) myChart.destroy();
                  totalCiroValueElement.textContent = 'Hesaplanıyor...';
+                 globalTotalCallsElement.textContent = '...';
+                 globalTotalSalesElement.textContent = '...';
+                 globalSaleRateElement.textContent = '...';
             };
 
             async function fetchAvailablePeriods() {
