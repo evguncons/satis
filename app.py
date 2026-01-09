@@ -5,32 +5,39 @@ import os
 # -----------------------------------------------------------------------------
 # Sayfa Konfigürasyonu
 # -----------------------------------------------------------------------------
-# Streamlit sayfasının temel ayarları. Sayfa başlığı, ikonu ve yerleşim düzeni belirlenir.
 st.set_page_config(
-    page_title="Satış Liderlik Tablosu",
+    page_title="ARIZA TAKİP HEDEF AVM",
     page_icon="🏆",
-    layout="wide"  # HTML içeriğinin tam genişlikte görüntülenmesini sağlar.
+    layout="wide"
 )
 
 # -----------------------------------------------------------------------------
-# Tam Ekran, Çerçevesiz ve Mobil Uyumlu Bileşen için Özel CSS
+# Tam Ekran ve Header/Footer Gizleme CSS
 # -----------------------------------------------------------------------------
-# Bu CSS kodu, Streamlit'in varsayılan kenar boşluklarını kaldırır ve iframe'in
-# tüm ekranı kaplamasını sağlayarak mobil kaydırma sorunlarını çözer.
 st.markdown("""
     <style>
-        /* Ana sayfanın kaydırma çubuğunu gizle */
+        /* Streamlit Header, Footer ve Menüyü gizle */
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+        #MainMenu {visibility: hidden;}
+        .stDeployButton {display:none;}
+
+        /* Ana sayfanın (Streamlit container'ı) kaydırma çubuğunu gizle */
+        /* Böylece çift scroll bar oluşmaz */
         body {
             overflow: hidden; 
+            margin: 0;
+            padding: 0;
         }
         
-        /* Streamlit tarafından eklenen tüm kenar boşluklarını kaldır */
+        /* Streamlit'in iç konteyner boşluklarını sıfırla */
         .block-container {
             padding: 0 !important;
             margin: 0 !important;
+            max-width: 100% !important;
         }
 
-        /* Bileşenin bulunduğu iframe'in tüm ekranı kaplamasını sağla */
+        /* iframe'i ekranın tamamına sabitle */
         iframe {
             position: fixed;
             top: 0;
@@ -38,6 +45,8 @@ st.markdown("""
             width: 100vw;
             height: 100vh;
             border: none;
+            z-index: 999999;
+            display: block; /* Boşlukları önlemek için */
         }
     </style>
     """, unsafe_allow_html=True)
@@ -45,30 +54,19 @@ st.markdown("""
 # -----------------------------------------------------------------------------
 # HTML Dosyasını Okuma ve Gösterme
 # -----------------------------------------------------------------------------
-# Bu bölüm, `app.py` ile aynı dizinde bulunan 'index.html' dosyasını bulur,
-# içeriğini okur ve Streamlit'in `components.html` özelliğini kullanarak
-# ekranda görüntüler.
-
-# HTML dosyasının yolu (app.py ile aynı dizinde olduğu varsayılır)
 html_file_path = os.path.join(os.path.dirname(__file__), 'index.html')
 
-try:
-    # HTML dosyasını UTF-8 kodlamasıyla oku
-    with open(html_file_path, 'r', encoding='utf-8') as f:
-        html_code = f.read()
+if os.path.exists(html_file_path):
+    try:
+        with open(html_file_path, 'r', encoding='utf-8') as f:
+            html_code = f.read()
 
-    # HTML içeriğini Streamlit bileşeni olarak göster.
-    # `height` parametresi kaldırıldı, çünkü boyutlandırma artık CSS ile kontrol ediliyor.
-    # `scrolling=True`, HTML içeriğinin kendi içinde kaydırılmasına izin verir.
-    components.html(html_code, scrolling=True)
+        # DÜZELTME BURADA YAPILDI:
+        # 1. scrolling=True eklendi.
+        # 2. height değeri CSS ile ezilse de, Python tarafında bir yer kaplaması için bırakıldı.
+        components.html(html_code, height=1000, scrolling=True)
 
-except FileNotFoundError:
-    # `index.html` dosyası bulunamazsa kullanıcıya bilgilendirici bir hata mesajı gösterilir.
-    st.error(f"HATA: '{html_file_path}' konumunda `index.html` dosyası bulunamadı.")
-    st.warning(
-        "Lütfen aşağıdaki adımları kontrol edin:\n"
-        "1. Canvas'taki HTML kodunun tamamını kopyalayıp `index.html` adıyla kaydettiğinizden emin olun.\n"
-        "2. `index.html` dosyasının `app.py` dosyasıyla aynı klasörde olduğundan emin olun."
-    )
-except Exception as e:
-    st.error(f"HTML dosyası okunurken beklenmedik bir hata oluştu: {e}")
+    except Exception as e:
+        st.error(f"Hata: {e}")
+else:
+    st.error("index.html bulunamadı! Lütfen dosyanın app.py ile aynı klasörde olduğundan emin olun.")
