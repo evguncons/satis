@@ -6,7 +6,7 @@ import os
 # Sayfa Konfigürasyonu
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="ARIZA TAKİP HEDEF AVM",
+    page_title="SATIŞ LİDERLİK TABLOSU HEDEF AVM",
     page_icon="🏆",
     layout="wide"
 )
